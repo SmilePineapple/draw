@@ -5,7 +5,7 @@ import { prefs, setSound, speak, cheer, stopSpeaking, unlockOnFirstTouch } from 
 import { createReader } from './reader.js';
 import { DEFAULT_WORDS } from './wordlist.js';
 import { P } from './phrases.js';
-import { store, addStar, stars, markDone, isDone, profiles } from './store.js';
+import { store, addStar, stars, markDone, isDone, profiles, initData } from './store.js';
 import { createGames } from './games.js';
 import { createColour } from './colour.js';
 import { createMixup } from './mixup.js';
@@ -15,6 +15,7 @@ import { createGrownups } from './grownups.js';
 const app = document.getElementById('app');
 let tracer = null;
 
+initData(); // first run on a device (or after a data reset): wipe old data, set up Arty and Harry
 unlockOnFirstTouch();
 // stop iPad pinch-zoom / double-tap zoom so little fingers don't lose the page
 document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -553,12 +554,9 @@ function route() {
   stopSpeaking();
   document.querySelectorAll('.confetti').forEach((c) => c.remove());
   const h = location.hash || '#/';
-  // everyone needs a player profile first
-  if (!profiles.current()) {
-    const first = profiles.list()[0];
-    if (first) profiles.setCurrent(first.id);
-    else if (!h.startsWith('#/who')) { location.hash = '#/who'; return; }
-  }
+  // every time the app is opened, the first screen is "who's playing?"
+  const picked = sessionStorage.getItem('picked') && profiles.current();
+  if (!picked && !h.startsWith('#/who')) { location.hash = '#/who'; return; }
   for (const [re, fn] of routes) {
     const m = h.match(re);
     if (m) { fn(...m.slice(1)); return; }

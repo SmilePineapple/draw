@@ -9,7 +9,7 @@ A tiny, no-build web app for little kids (made for a 4- and 5-year-old on iPads)
 - **Screen / Paper toggle** on every drawing, letter and word: in *Paper* mode the screen shows the model one step at a time and the child draws or writes it on real paper, then taps "Done! Next step". The 🖨️ button prints a worksheet (dotted letters/words to trace with a pencil, or a step-by-step drawing guide).
 - **Games** – Picture Match, Word Hunt (find a word in a story page), Word Builder (letter tiles), **Count & Colour** (count the heroes, then colour them), a **Colouring Book** (tap a shape to fill it) and **Silly Mix-up** (swap the top, eyes and mouth of any two or three characters).
 - **Sticker Book** – stars earned from drawing, writing, reading and games are spent in the shop; stickers are stuck on a scene (drag, resize, flip, backgrounds).
-- **Players** – a profile per child ("Who's playing?"); stars, stickers, progress and settings are saved separately. The **🔒 Grown-ups** page (behind a small sum) shows letters, drawings, stories, words, tricky words, games and a 14-day activity chart for each child, plus reset/rename/remove.
+- **Players** – the app opens on "Who's playing?" with **Arty** and **Harry** (set up in `src/store.js`); stars, stickers, progress and settings are saved separately on each iPad. The **🔒 Grown-ups** page (behind a PIN keypad — the PIN is `PIN` in `src/grownups.js`) shows letters, drawings, stories, words, tricky words, games and a 14-day activity chart for each child, plus reset/rename/remove.
 - **Works offline** – a service worker saves the app on the device after the first visit.
 - 16 pen colours including white, and a **Next word** button.
 - Instructions and stories are **read aloud by a British female narrator** (recorded ahead of time — see *Voice* below), with word-by-word highlighting; the iPad's own British voice is the fallback, with sound effects, stars, confetti and "Save picture".
@@ -30,6 +30,10 @@ Import the repo in Vercel. Framework preset: **Other**, no build command, no out
 (the project root is served as-is). Or from the CLI: `npx vercel --prod`.
 
 On the iPad: open the site in Safari → Share → **Add to Home Screen** for a full-screen app icon.
+
+## Resetting data
+
+Progress is stored on each device (no server). To wipe everything on every device and start fresh, bump `DATA_VERSION` in `src/store.js`: the next time the app opens on a device it clears all saved data once and recreates the players.
 
 ## Voice (British female narrator)
 

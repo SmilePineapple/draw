@@ -28,12 +28,12 @@ export const profiles = {
     return this.list().find((p) => p.id === id) || null;
   },
   get(id) { return this.list().find((p) => p.id === id) || null; },
-  add({ name, avatar }) {
+  add({ name, avatar, id: fixedId }) {
     const list = this.list();
-    const id = `p${Date.now().toString(36)}${list.length}`;
+    const id = fixedId || `p${Date.now().toString(36)}${list.length}`;
     list.push({ id, name: name || `Player ${list.length + 1}`, avatar: avatar || 'bluey' });
     rawSet('profiles', list);
-    if (list.length === 1) {
+    if (list.length === 1 && !fixedId) {
       // the first player inherits anything saved before profiles existed
       for (const k of LEGACY_KEYS) {
         try {
@@ -99,3 +99,21 @@ export function markDone(kind, id) {
 }
 export const isDone = (kind, id) => !!store.get('done', {})[`${kind}:${id}`];
 export const doneOf = (pid) => storeOf(pid).get('done', {});
+
+// ---------------------------------------------------------------- fresh start
+// Bump DATA_VERSION to wipe everything saved on a device the next time the app opens (once), then set up the family.
+const DATA_VERSION = 2;
+const FAMILY = [
+  { id: 'arty', name: 'Arty', avatar: 'bluey' },
+  { id: 'harry', name: 'Harry', avatar: 'spidey' },
+];
+
+export function initData() {
+  if (rawGet('dataVersion', 0) === DATA_VERSION) return;
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith(PFX)).forEach((k) => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+  rawSet('dataVersion', DATA_VERSION);
+  FAMILY.forEach((p) => profiles.add(p));
+  rawSet('current', null);
+}

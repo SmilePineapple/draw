@@ -21,21 +21,21 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
     app.innerHTML = `
       <div class="screen who">
         <header class="home-head"><div class="logo"><span>Who's</span> <span>playing?</span></div></header>
+        <p class="hello who-hello">Tap your picture!</p>
         <main class="scroll">
           <div class="cards players">
             ${list.map((p) => `
               <button class="card player" data-id="${p.id}"><div class="thumb">${avatarThumb(p.avatar)}</div><b>${esc(p.name)}</b></button>`).join('')}
-            <button class="card player add" id="add"><div class="thumb big-plus">➕</div><b>New player</b></button>
           </div>
         </main>
         <div class="sheet" id="sheet" hidden></div>
       </div>`;
     app.querySelectorAll('.player[data-id]').forEach((b) => b.addEventListener('click', () => {
       profiles.setCurrent(b.dataset.id);
+      try { sessionStorage.setItem('picked', '1'); } catch { /* ignore */ }
       speak(P.hello);
       location.hash = '#/';
     }));
-    $('#add').addEventListener('click', () => profileForm());
     if (!list.length || forceAdd) profileForm(null, !list.length);
   }
 
@@ -71,11 +71,11 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
     };
   }
 
-  // ------------------------------------------------------------ gate
+  // ------------------------------------------------------------ gate (grown-ups PIN)
+  const PIN = '5253';
   function gate() {
     if (unlocked) { dashboard(); return; }
-    const a = 6 + Math.floor(Math.random() * 4);
-    const b = 6 + Math.floor(Math.random() * 4);
+    let entered = '';
     app.innerHTML = `
       <div class="screen">
         ${topBar({ back: '#/', title: 'Grown-ups', right: '' })}
@@ -83,20 +83,32 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
           <div class="gate-card">
             <div class="gate-lock">🔒</div>
             <h2>Grown-ups only</h2>
-            <p>To open this page, answer the question:</p>
-            <div class="gate-q">${a} + ${b} = ?</div>
-            <input id="ans" inputmode="numeric" pattern="[0-9]*" type="text" autocomplete="off" aria-label="Answer">
-            <button class="btn big-btn" id="go">Open</button>
+            <p>Enter the PIN</p>
+            <div class="pin-dots" id="dots" aria-live="polite">${'<i></i>'.repeat(PIN.length)}</div>
+            <div class="keypad" id="keys">
+              ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button class="key" data-k="${n}">${n}</button>`).join('')}
+              <span></span><button class="key" data-k="0">0</button><button class="key del" data-k="del" aria-label="Delete">⌫</button>
+            </div>
             <p class="gate-err" id="err" hidden>Not quite — try again!</p>
           </div>
         </main>
       </div>`;
     wireSound();
-    const check = () => {
-      if (+$('#ans').value === a + b) { unlocked = true; dashboard(); } else { $('#err').hidden = false; $('#ans').value = ''; }
-    };
-    $('#go').onclick = check;
-    $('#ans').addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+    const paint = () => [...$('#dots').children].forEach((d, i) => d.classList.toggle('on', i < entered.length));
+    $('#keys').addEventListener('click', (e) => {
+      const k = e.target.closest('.key')?.dataset.k;
+      if (!k) return;
+      $('#err').hidden = true;
+      if (k === 'del') entered = entered.slice(0, -1);
+      else if (entered.length < PIN.length) entered += k;
+      paint();
+      if (entered.length === PIN.length) {
+        if (entered === PIN) { unlocked = true; dashboard(); return; }
+        $('#dots').classList.add('shake');
+        $('#err').hidden = false;
+        setTimeout(() => { entered = ''; paint(); $('#dots').classList.remove('shake'); }, 450);
+      }
+    });
   }
 
   // ------------------------------------------------------------ dashboard
