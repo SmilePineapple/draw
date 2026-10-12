@@ -1,0 +1,14 @@
+{
+  "name": "Super Sketch",
+  "short_name": "Super Sketch",
+  "description": "Step-by-step drawing and handwriting practice for little heroes.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#dff0ff",
+  "theme_color": "#7c5cff",
+  "icons": [
+    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

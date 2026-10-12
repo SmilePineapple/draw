@@ -1,0 +1,465 @@
+import { DRAWINGS, GROUPS, drawingById } from './drawings.js';
+import { GLYPHS, CAPS, SMALLS, NUMS, charInfo, layoutText } from './glyphs.js';
+import { createTracer } from './tracer.js';
+import { prefs, setSound, speak, cheer, unlockOnFirstTouch } from './sound.js';
+import { store, addStar, stars, markDone, isDone } from './store.js';
+
+const app = document.getElementById('app');
+let tracer = null;
+
+unlockOnFirstTouch();
+// stop iPad pinch-zoom / double-tap zoom so little fingers don't lose the page
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault());
+
+const $ = (sel, root = app) => root.querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ============================================================ helpers
+const PALETTE = ['auto', '#222222', '#e53935', '#fb8c00', '#f9d71c', '#43a047', '#1e88e5', '#8e24aa', '#ec407a', '#8d5524'];
+
+function topBar({ back, title, right = '' }) {
+  return `
+    <header class="bar">
+      <a class="btn round" href="${back}" aria-label="Back">⬅</a>
+      <h2>${title}</h2>
+      <div class="bar-right">${right}<button class="btn round" id="snd" aria-label="Sound">${prefs.sound ? '🔊' : '🔇'}</button></div>
+    </header>`;
+}
+function wireSound() {
+  const b = $('#snd');
+  if (!b) return;
+  b.onclick = () => { setSound(!prefs.sound); b.textContent = prefs.sound ? '🔊' : '🔇'; };
+}
+
+function drawingThumb(d) {
+  const items = d.steps
+    .map((s, i) => ({ s, z: s.z ?? i * 10 }))
+    .sort((a, b) => a.z - b.z)
+    .map(({ s }) => s.paths.map((p) => (s.fill
+      ? `<path d="${p}" fill="${s.fill}" stroke="#2b2b3a" stroke-width="6" stroke-linejoin="round"/>`
+      : `<path d="${p}" fill="none" stroke="#2b2b3a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`)).join(''))
+    .join('');
+  return `<svg viewBox="0 0 400 400" aria-hidden="true">${items}</svg>`;
+}
+
+function glyphThumb(ch) {
+  const g = GLYPHS[ch];
+  const paths = g.strokes.map((d) => `<path d="${d}" fill="none" stroke="#2b2b3a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+  return `<svg viewBox="-8 8 116 156" aria-hidden="true">${paths}</svg>`;
+}
+
+function confetti() {
+  cheer();
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  const bits = ['🎉', '⭐', '✨', '🌟', '🎈', '💥'];
+  for (let i = 0; i < 36; i++) {
+    const s = document.createElement('span');
+    s.textContent = bits[i % bits.length];
+    s.style.left = `${Math.random() * 100}%`;
+    s.style.animationDelay = `${Math.random() * 0.6}s`;
+    s.style.fontSize = `${24 + Math.random() * 30}px`;
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 3200);
+}
+
+function starsBadge() {
+  return `<div class="stars" title="Stars earned">⭐ <b>${stars()}</b></div>`;
+}
+
+// ============================================================ shared tracing screen
+/**
+ * Renders the trace screen (stage + side panel) and wires up all the buttons.
+ */
+function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, headerExtra = '', panelTop = '', winHtml, winSay, onWin }) {
+  const wide = vbW / vbH > 2.4;
+  app.innerHTML = `
+    <div class="screen trace ${wide ? 'wide' : ''} ${mode}">
+      ${topBar({ back, title, right: headerExtra })}
+      <main class="trace-main">
+        <div class="stage-host" id="host"></div>
+        <aside class="panel" id="panel">
+          <div class="panel-top">${panelTop}</div>
+          <div class="progress" id="progress"></div>
+          <p class="say" id="say"></p>
+          <div class="tools" id="tools">
+            <button class="btn tool" id="hear"><span>🔊</span>Hear it</button>
+            <button class="btn tool" id="hint"><span>👀</span>Show me</button>
+            <button class="btn tool" id="again"><span>🧽</span>Try again</button>
+            <button class="btn tool" id="prev"><span>◀</span>Back</button>
+            <button class="btn tool" id="skip"><span>▶</span>Skip</button>
+          </div>
+          <div class="palette" id="palette" role="radiogroup" aria-label="Pen colour"></div>
+          <div class="win" id="win" hidden></div>
+        </aside>
+      </main>
+    </div>`;
+  wireSound();
+
+  const sayEl = $('#say');
+  const progress = $('#progress');
+  progress.innerHTML = steps.map(() => '<i></i>').join('');
+  progress.style.setProperty('--n', steps.length);
+  let lastSay = '';
+
+  let onStepUi = null;
+  tracer?.destroy();
+  tracer = createTracer({
+    mount: $('#host'),
+    vbW, vbH, steps, mode, backdrop,
+    onStepChange(i, step) {
+      [...progress.children].forEach((c, k) => c.classList.toggle('done', k < i));
+      [...progress.children].forEach((c, k) => c.classList.toggle('now', k === i));
+      const text = sayFor(i, step, steps);
+      lastSay = text.say;
+      sayEl.innerHTML = text.html ?? esc(text.say);
+      if (text.speak ?? text.say) speak(text.speak ?? text.say);
+      onStepUi?.(i, step);
+    },
+    onComplete() {
+      [...progress.children].forEach((c) => { c.classList.add('done'); c.classList.remove('now'); });
+      addStar(1);
+      onWin?.();
+      showWin();
+    },
+  });
+  const t = tracer;
+
+  function showWin() {
+    confetti();
+    $('#panel').classList.add('won');
+    sayEl.hidden = true;
+    $('#tools').hidden = true;
+    const w = $('#win');
+    w.hidden = false;
+    w.innerHTML = winHtml();
+    w.querySelector('[data-act="again"]')?.addEventListener('click', () => resetUi());
+    w.querySelector('[data-act="save"]')?.addEventListener('click', savePicture);
+    speak(winSay || 'Great job! You did it!');
+  }
+  function resetUi() {
+    $('#win').hidden = true;
+    $('#panel').classList.remove('won');
+    sayEl.hidden = false;
+    $('#tools').hidden = false;
+    t.restart();
+  }
+  async function savePicture() {
+    const blob = await t.toBlob();
+    if (!blob) return;
+    const file = new File([blob], `${title.replace(/\W+/g, '-').toLowerCase()}.png`, { type: 'image/png' });
+    try {
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title }); return; }
+    } catch { /* user cancelled share */ return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  $('#hear').onclick = () => speak(lastSay);
+  $('#hint').onclick = () => { t.hint(); };
+  $('#again').onclick = () => t.clearStep();
+  $('#prev').onclick = () => t.back();
+  $('#skip').onclick = () => t.skip();
+
+  const pal = $('#palette');
+  pal.innerHTML = PALETTE.map((c, i) => {
+    const style = c === 'auto' ? 'background:conic-gradient(#e53935,#fb8c00,#f9d71c,#43a047,#1e88e5,#8e24aa,#e53935)' : `background:${c}`;
+    return `<button class="swatch ${i === 0 ? 'sel' : ''}" role="radio" aria-checked="${i === 0}" data-c="${c}" style="${style}" aria-label="${c === 'auto' ? 'Rainbow' : c}"></button>`;
+  }).join('');
+  pal.onclick = (e) => {
+    const b = e.target.closest('.swatch');
+    if (!b) return;
+    pal.querySelectorAll('.swatch').forEach((s) => { s.classList.toggle('sel', s === b); s.setAttribute('aria-checked', s === b); });
+    t.setColor(b.dataset.c);
+  };
+
+  return { tracer: t, setStepUi: (fn) => { onStepUi = fn; }, showWin };
+}
+
+// ============================================================ screens
+function home() {
+  tracer?.destroy(); tracer = null;
+  app.innerHTML = `
+    <div class="screen home">
+      <header class="home-head">
+        <div class="logo"><span>Super</span> <span>Sketch</span></div>
+        ${starsBadge()}
+        <button class="btn round" id="snd" aria-label="Sound">${prefs.sound ? '🔊' : '🔇'}</button>
+      </header>
+      <p class="hello">What shall we do today?</p>
+      <nav class="tiles">
+        <a class="tile t-draw" href="#/draw"><span class="big">🎨</span><b>Draw Heroes</b><small>Spidey, Bluey, Yoda &amp; more</small></a>
+        <a class="tile t-letters" href="#/letters"><span class="big">✏️</span><b>Letters</b><small>A B C &amp; 1 2 3</small></a>
+        <a class="tile t-words" href="#/words"><span class="big">📝</span><b>Words</b><small>Write names &amp; words</small></a>
+      </nav>
+    </div>`;
+  wireSound();
+  $('.t-draw').onclick = () => speak('Draw heroes!');
+  $('.t-letters').onclick = () => speak('Letters!');
+  $('.t-words').onclick = () => speak('Words!');
+}
+
+function drawList() {
+  tracer?.destroy(); tracer = null;
+  const sections = GROUPS.map((g) => {
+    const items = DRAWINGS.filter((d) => d.group === g.id);
+    if (!items.length) return '';
+    return `
+      <section class="group" style="--gc:${g.color};--gb:${g.bg}">
+        <h3><span>${g.emoji}</span> ${esc(g.name)}</h3>
+        <div class="cards">
+          ${items.map((d) => `
+            <a class="card" href="#/draw/${d.id}">
+              <div class="thumb">${drawingThumb(d)}</div>
+              <b>${esc(d.title)}</b>
+              ${isDone('draw', d.id) ? '<i class="badge">⭐</i>' : ''}
+            </a>`).join('')}
+        </div>
+      </section>`;
+  }).join('');
+  app.innerHTML = `
+    <div class="screen list">
+      ${topBar({ back: '#/', title: 'Draw Heroes', right: starsBadge() })}
+      <main class="scroll">${sections}</main>
+    </div>`;
+  wireSound();
+}
+
+function drawPage(id) {
+  const d = drawingById(id);
+  if (!d) return (location.hash = '#/draw');
+  const idx = DRAWINGS.indexOf(d);
+  const next = DRAWINGS[(idx + 1) % DRAWINGS.length];
+  traceScreen({
+    back: '#/draw', title: d.title, vbW: 400, vbH: 400, mode: 'draw',
+    steps: d.steps,
+    panelTop: `<div class="mini">${drawingThumb(d)}</div><div class="step-label" id="steplabel"></div>`,
+    sayFor(i, step, all) {
+      $('#steplabel').textContent = `Step ${i + 1} of ${all.length}`;
+      const say = step.say;
+      return { say, speak: i === 0 ? `Let's draw ${d.title}! ${say}` : say };
+    },
+    winHtml() {
+      return `
+        <div class="win-card">
+          <div class="win-emoji">🎉</div>
+          <h3>You drew ${esc(d.title)}!</h3>
+          <p>Amazing job! You can keep doodling on your picture too.</p>
+          <div class="win-actions">
+            <button class="btn big-btn" data-act="save">💾 Save picture</button>
+            <button class="btn big-btn alt" data-act="again">🔁 Draw again</button>
+            <a class="btn big-btn next" href="#/draw/${next.id}">➡ ${esc(next.title)}</a>
+            <a class="btn big-btn alt" href="#/draw">🎨 All heroes</a>
+          </div>
+        </div>`;
+    },
+    winSay: `You drew ${d.title}! Amazing job!`,
+    onWin: () => markDone('draw', d.id),
+  });
+}
+
+// ---------------------------------------------------------------- letters
+const SETS = {
+  caps: { name: 'ABC', chars: CAPS },
+  smalls: { name: 'abc', chars: SMALLS },
+  nums: { name: '123', chars: NUMS },
+};
+
+function lettersList(set = 'caps') {
+  tracer?.destroy(); tracer = null;
+  const s = SETS[set] || SETS.caps;
+  app.innerHTML = `
+    <div class="screen list">
+      ${topBar({ back: '#/', title: 'Letters', right: starsBadge() })}
+      <nav class="tabs">
+        ${Object.entries(SETS).map(([k, v]) => `<a class="tab ${k === set ? 'on' : ''}" href="#/letters/${k}">${v.name}</a>`).join('')}
+      </nav>
+      <main class="scroll">
+        <div class="cards glyphs">
+          ${s.chars.map((ch) => `
+            <a class="card glyph" href="#/letter/${set}/${encodeURIComponent(ch)}">
+              <div class="thumb">${glyphThumb(ch)}</div>
+              ${isDone('letter', ch) ? '<i class="badge">⭐</i>' : ''}
+            </a>`).join('')}
+        </div>
+      </main>
+    </div>`;
+  wireSound();
+}
+
+function letterPage(set, ch) {
+  const s = SETS[set];
+  if (!s || !GLYPHS[ch]) return (location.hash = '#/letters');
+  const i = s.chars.indexOf(ch);
+  const prev = s.chars[(i - 1 + s.chars.length) % s.chars.length];
+  const next = s.chars[(i + 1) % s.chars.length];
+  const info = charInfo(ch);
+  const lay = layoutText(ch);
+  const isNum = /[0-9]/.test(ch);
+  traceScreen({
+    back: `#/letters/${set}`, title: isNum ? `Number ${ch}` : `Letter ${ch}`,
+    vbW: lay.vbW, vbH: lay.vbH, steps: lay.steps, backdrop: lay.backdrop, mode: 'write',
+    headerExtra: `<a class="btn round" href="#/letter/${set}/${encodeURIComponent(prev)}" aria-label="Previous">◀</a><a class="btn round" href="#/letter/${set}/${encodeURIComponent(next)}" aria-label="Next">▶</a>`,
+    panelTop: `<div class="letter-card"><div class="big-letter">${esc(ch)}</div>${info.emoji ? `<div class="pic">${info.emoji}</div>` : ''}<div class="cap">${esc(info.caption)}</div></div>`,
+    sayFor(k, step) {
+      if (step.first) {
+        const html = step.strokeCount > 1
+          ? `Start at the <b class="g">green dot</b>.<br>Line <b>1</b> first!`
+          : `Start at the <b class="g">green dot</b> and follow the line.`;
+        const say = isNum ? `Let's write the number ${info.name}. Start at the green dot.` : `${info.speak} Start at the green dot.`;
+        return { say, html };
+      }
+      return { say: `Now line ${step.strokeIndex + 1}.`, html: `Now line <b>${step.strokeIndex + 1}</b>!` };
+    },
+    winHtml() {
+      return `
+        <div class="win-card">
+          <div class="win-emoji">${info.emoji || '🎉'}</div>
+          <h3>Great ${isNum ? 'number' : 'letter'} ${esc(ch)}!</h3>
+          <div class="win-actions">
+            <a class="btn big-btn next" href="#/letter/${set}/${encodeURIComponent(next)}">➡ Next: ${esc(next)}</a>
+            <button class="btn big-btn alt" data-act="again">🔁 Again</button>
+            <a class="btn big-btn alt" href="#/letters/${set}">🔤 All ${s.name}</a>
+          </div>
+        </div>`;
+    },
+    winSay: isNum ? `Great number ${info.name}!` : `Great letter ${info.name}!`,
+    onWin: () => markDone('letter', ch),
+  });
+}
+
+// ---------------------------------------------------------------- words
+const DEFAULT_WORDS = [
+  ['Bluey', '🐶'], ['Bingo', '🐕'], ['Hulk', '💚'], ['Thor', '⚡'], ['Yoda', '🟢'], ['Luke', '🗡️'],
+  ['Vader', '🖤'], ['Catboy', '🐱'], ['Owlette', '🦉'], ['Gekko', '🦎'], ['Hero', '🦸'], ['Star', '⭐'],
+  ['Mom', '💖'], ['Dad', '💙'], ['Love', '❤️'], ['Cat', '🐈'], ['Dog', '🐕'], ['Sun', '☀️'],
+];
+const getCustom = () => store.get('words', []);
+const caseStyle = () => store.get('case', 'Abc');
+function styled(w) {
+  const l = w.toLowerCase();
+  return { Abc: l.charAt(0).toUpperCase() + l.slice(1), ABC: l.toUpperCase(), abc: l }[caseStyle()] || w;
+}
+const clean = (w) => w.replace(/[^A-Za-z ]/g, '').trim().replace(/\s+/g, ' ').slice(0, 12);
+
+function wordsList(edit = false) {
+  tracer?.destroy(); tracer = null;
+  const custom = getCustom();
+  const card = (w, emoji, isCustom) => `
+    <a class="card word" href="#/word/${encodeURIComponent(w)}">
+      <span class="w">${esc(styled(w))}</span>
+      ${emoji ? `<span class="e">${emoji}</span>` : ''}
+      ${isDone('word', w.toLowerCase()) ? '<i class="badge">⭐</i>' : ''}
+      ${isCustom && edit ? `<button class="del" data-w="${esc(w)}" aria-label="Remove ${esc(w)}">✕</button>` : ''}
+    </a>`;
+  app.innerHTML = `
+    <div class="screen list">
+      ${topBar({ back: '#/', title: 'Words', right: starsBadge() })}
+      <nav class="tabs">
+        ${['Abc', 'ABC', 'abc'].map((c) => `<button class="tab ${c === caseStyle() ? 'on' : ''}" data-case="${c}">${c}</button>`).join('')}
+      </nav>
+      <main class="scroll">
+        <section class="group" style="--gc:#7a3fd1;--gb:#efe3ff">
+          <h3><span>👨‍👩‍👧</span> Our names &amp; words</h3>
+          <div class="cards words">
+            ${custom.map((w) => card(w, '🌟', true)).join('')}
+            <button class="card word add" id="add"><span class="w">➕</span><span class="e">Add a word</span></button>
+          </div>
+          ${custom.length ? `<button class="link" id="edit">${edit ? '✔ Done' : '✎ Remove words'}</button>` : ''}
+        </section>
+        <section class="group" style="--gc:#e23636;--gb:#ffe3e3">
+          <h3><span>🦸</span> Hero &amp; fun words</h3>
+          <div class="cards words">${DEFAULT_WORDS.map(([w, e]) => card(w, e, false)).join('')}</div>
+        </section>
+      </main>
+    </div>`;
+  wireSound();
+  app.querySelectorAll('[data-case]').forEach((b) => b.onclick = () => { store.set('case', b.dataset.case); wordsList(edit); });
+  $('#add').onclick = () => {
+    const w = clean(prompt('Type a name or word (letters only):') || '');
+    if (!w) return;
+    const list = getCustom().filter((x) => x.toLowerCase() !== w.toLowerCase());
+    store.set('words', [...list, w]);
+    wordsList(edit);
+  };
+  $('#edit')?.addEventListener('click', () => wordsList(!edit));
+  app.querySelectorAll('.del').forEach((b) => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    store.set('words', getCustom().filter((x) => x !== b.dataset.w));
+    wordsList(true);
+  });
+}
+
+function wordPage(raw) {
+  const word = clean(decodeURIComponent(raw));
+  const text = styled(word);
+  const lay = layoutText(text);
+  if (!lay.steps.length) return (location.hash = '#/words');
+  const emoji = (DEFAULT_WORDS.find(([w]) => w.toLowerCase() === word.toLowerCase()) || [])[1] || '';
+  const letters = [...text];
+  traceScreen({
+    back: '#/words', title: text,
+    vbW: lay.vbW, vbH: lay.vbH, steps: lay.steps, backdrop: lay.backdrop, mode: 'write',
+    panelTop: `<div class="word-card" id="wordcard">${letters.map((l, k) => `<span data-k="${k}">${esc(l)}</span>`).join('')}${emoji ? `<em>${emoji}</em>` : ''}</div>`,
+    sayFor(k, step) {
+      const spans = app.querySelectorAll('#wordcard span');
+      let li = 0; let n = -1;
+      letters.forEach((l, pos) => { if (l !== ' ') { n++; if (n === step.letterIndex) li = pos; } });
+      spans.forEach((sp, pos) => sp.classList.toggle('now', pos === li));
+      const info = charInfo(step.letter);
+      if (step.first) {
+        const what = /[A-Z]/.test(step.letter) ? 'capital' : 'small';
+        return {
+          say: `Write ${info.name}.`,
+          html: `Write the ${/[0-9]/.test(step.letter) ? 'number' : what + ' letter'} <b class="g">${esc(step.letter)}</b>`,
+          speak: `${info.name}. Start at the green dot.`,
+        };
+      }
+      return { say: `Keep going! Line ${step.strokeIndex + 1}.`, html: `Keep going! Line <b>${step.strokeIndex + 1}</b>` };
+    },
+    winHtml() {
+      return `
+        <div class="win-card">
+          <div class="win-emoji">${emoji || '🎉'}</div>
+          <h3>You wrote ${esc(text)}!</h3>
+          <div class="win-actions">
+            <button class="btn big-btn" data-act="save">💾 Save picture</button>
+            <button class="btn big-btn alt" data-act="again">🔁 Again</button>
+            <a class="btn big-btn alt" href="#/words">📝 More words</a>
+          </div>
+        </div>`;
+    },
+    winSay: `You wrote ${text}! Great job!`,
+    onWin: () => markDone('word', word.toLowerCase()),
+  });
+}
+
+// ============================================================ router
+const routes = [
+  [/^#?\/?$/, home],
+  [/^#\/draw$/, drawList],
+  [/^#\/draw\/([\w-]+)$/, drawPage],
+  [/^#\/letters(?:\/(caps|smalls|nums))?$/, lettersList],
+  [/^#\/letter\/(caps|smalls|nums)\/(.+)$/, (set, ch) => letterPage(set, decodeURIComponent(ch))],
+  [/^#\/words$/, () => wordsList(false)],
+  [/^#\/word\/(.+)$/, wordPage],
+];
+
+function route() {
+  window.speechSynthesis?.cancel();
+  document.querySelectorAll('.confetti').forEach((c) => c.remove());
+  const h = location.hash || '#/';
+  for (const [re, fn] of routes) {
+    const m = h.match(re);
+    if (m) { fn(...m.slice(1)); return; }
+  }
+  location.hash = '#/';
+}
+window.addEventListener('hashchange', route);
+route();
