@@ -33,7 +33,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install piper-tts numpy
-      - run: ffmpeg -version | head -1
+      - name: Install ffmpeg (mp3 conversion)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+          command -v ffmpeg
       - run: node scripts/audio-texts.mjs
       - run: python scripts/gen_audio.py
         timeout-minutes: 70

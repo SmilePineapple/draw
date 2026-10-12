@@ -20,6 +20,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -261,6 +262,9 @@ async def main():
     if ENGINE != "edge":
         os.environ["TTS_VOICE"] = VOICE  # workers load exactly this voice
 
+    if ENGINE != "edge" and not shutil.which("ffmpeg"):
+        print("ffmpeg is not installed (needed to make the mp3 files) - the device voice will be used instead")
+        return
     items = json.loads(texts_path.read_text())
     index_path = AUDIO / "index.json"
     old = {}
