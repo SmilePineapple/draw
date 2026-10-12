@@ -544,3 +544,4 @@ a.stars { display: inline-block; touch-action: manipulation; }
 .cards.players { max-width: 760px; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 .card.player { padding: 18px; }
 .card.player b { font-size: 34px; }
+.back-story { width: 100%; margin-top: 12px; background: #4caf50; color: #fff; }

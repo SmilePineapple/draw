@@ -56,6 +56,7 @@ export function createReader({ app, $, esc, topBar, wireSound, drawingThumb, sta
           <button class="btn big-btn alt" data-a="out">🔤 Sound it out</button>
           ${canWrite(word) ? `<a class="btn big-btn next" href="#/word/${encodeURIComponent(word)}">✏️ Write it</a>` : ''}
         </div>
+        <button class="btn big-btn back-story" data-a="close">${document.getElementById('text') ? '📖 Back to the story' : '⬅️ Back'}</button>
       </div>`;
     const sylEls = [...sheet.querySelectorAll('.syl')];
     const lit = (i) => sylEls.forEach((el, k) => el.classList.toggle('on', k === i));
@@ -63,6 +64,7 @@ export function createReader({ app, $, esc, topBar, wireSound, drawingThumb, sta
     sheet.onclick = (e) => {
       if (e.target === sheet || e.target.closest('.sheet-x')) { sheet.hidden = true; stopSpeaking(); return; }
       const a = e.target.closest('[data-a]')?.dataset.a;
+      if (a === 'close') { sheet.hidden = true; stopSpeaking(); return; }
       if (a === 'say') say();
       if (a === 'slow') speak(word, { rate: 0.45, pitch: 1.05 });
       if (a === 'out') {
