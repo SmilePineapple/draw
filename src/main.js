@@ -3,7 +3,12 @@ import { GLYPHS, CAPS, SMALLS, NUMS, charInfo, layoutText } from './glyphs.js';
 import { createTracer } from './tracer.js';
 import { prefs, setSound, speak, cheer, stopSpeaking, unlockOnFirstTouch } from './sound.js';
 import { createReader } from './reader.js';
-import { store, addStar, stars, markDone, isDone } from './store.js';
+import { store, addStar, stars, markDone, isDone, profiles } from './store.js';
+import { createGames } from './games.js';
+import { createColour } from './colour.js';
+import { createMixup } from './mixup.js';
+import { createStickers } from './stickers.js';
+import { createGrownups } from './grownups.js';
 
 const app = document.getElementById('app');
 let tracer = null;
@@ -69,7 +74,7 @@ function confetti() {
 }
 
 function starsBadge() {
-  return `<div class="stars" title="Stars earned">⭐ <b>${stars()}</b></div>`;
+  return `<a class="stars" href="#/stickers" title="Stars to spend on stickers">⭐ <b>${stars()}</b></a>`;
 }
 
 // ============================================================ shared tracing screen
@@ -246,26 +251,29 @@ function printSheet({ title, vbW, vbH, steps, mode, backdrop }) {
 // ============================================================ screens
 function home() {
   tracer?.destroy(); tracer = null;
+  const me = profiles.current();
   app.innerHTML = `
     <div class="screen home">
       <header class="home-head">
+        <a class="who-chip" href="#/who" aria-label="Change player"><span class="who-av">${me ? drawingThumb(drawingById(me.avatar) || DRAWINGS[0]) : ''}</span><b>${esc(me?.name || '')}</b></a>
         <div class="logo"><span>Super</span> <span>Sketch</span></div>
         ${starsBadge()}
+        <a class="btn round" href="#/grownups" aria-label="Grown-ups">🔒</a>
         <button class="btn round" id="snd" aria-label="Sound">${prefs.sound ? '🔊' : '🔇'}</button>
       </header>
-      <p class="hello">What shall we do today?</p>
+      <p class="hello">${me ? `Hi ${esc(me.name)}! ` : ''}What shall we do today?</p>
       <nav class="tiles">
-        <a class="tile t-draw" href="#/draw"><span class="big">🎨</span><b>Draw Heroes</b><small>Spidey, Bluey, Yoda &amp; more</small></a>
+        <a class="tile t-draw" href="#/draw"><span class="big">🎨</span><b>Draw Heroes</b><small>Step by step</small></a>
         <a class="tile t-letters" href="#/letters"><span class="big">✏️</span><b>Letters</b><small>A B C &amp; 1 2 3</small></a>
         <a class="tile t-words" href="#/words"><span class="big">📝</span><b>Words</b><small>Write names &amp; words</small></a>
         <a class="tile t-stories" href="#/stories"><span class="big">📖</span><b>Stories</b><small>Funny stories to read</small></a>
+        <a class="tile t-games" href="#/games"><span class="big">🎮</span><b>Games</b><small>Match, count, colour &amp; mix</small></a>
+        <a class="tile t-stickers" href="#/stickers"><span class="big">🌟</span><b>Sticker Book</b><small>Spend your stars</small></a>
       </nav>
     </div>`;
   wireSound();
-  $('.t-draw').onclick = () => speak('Draw heroes!');
-  $('.t-letters').onclick = () => speak('Letters!');
-  $('.t-words').onclick = () => speak('Words!');
-  $('.t-stories').onclick = () => speak('Stories!');
+  const say = { '.t-draw': 'Draw heroes!', '.t-letters': 'Letters!', '.t-words': 'Words!', '.t-stories': 'Stories!', '.t-games': 'Games!', '.t-stickers': 'Sticker book!' };
+  Object.entries(say).forEach(([sel, t]) => { $(sel).onclick = () => speak(t); });
 }
 
 function drawList() {
@@ -402,6 +410,8 @@ const DEFAULT_WORDS = [
   ['Bluey', '🐶'], ['Bingo', '🐕'], ['Hulk', '💚'], ['Thor', '⚡'], ['Yoda', '🟢'], ['Luke', '🗡️'],
   ['Vader', '🖤'], ['Catboy', '🐱'], ['Owlette', '🦉'], ['Gekko', '🦎'], ['Hero', '🦸'], ['Star', '⭐'],
   ['Mom', '💖'], ['Dad', '💙'], ['Love', '❤️'], ['Cat', '🐈'], ['Dog', '🐕'], ['Sun', '☀️'],
+  ['Bandit', '🐕'], ['Chilli', '🐕'], ['Muffin', '🐶'], ['Socks', '🐾'], ['Groot', '🌳'], ['Grogu', '💚'],
+  ['Chewie', '🐻'], ['Boba', '🚀'], ['Luna', '🌙'], ['Ninja', '🥷'], ['Panther', '🐆'],
 ];
 const getCustom = () => store.get('words', []);
 const caseStyle = () => store.get('case', 'Abc');
@@ -509,7 +519,14 @@ function wordPage(raw) {
   });
 }
 
-const reader = createReader({ app, $, esc, topBar, wireSound, drawingThumb, starsBadge, confetti });
+const ctx = { app, $, esc, topBar, wireSound, drawingThumb, starsBadge, confetti };
+const reader = createReader(ctx);
+const games = createGames(ctx);
+const colour = createColour(ctx);
+const mixup = createMixup(ctx);
+const stickers = createStickers(ctx);
+const grownups = createGrownups(ctx);
+const leave = (fn) => (...a) => { tracer?.destroy(); tracer = null; fn(...a); };
 
 // ============================================================ router
 const routes = [
@@ -524,12 +541,28 @@ const routes = [
   [/^#\/story\/([\w-]+)\/(\d+)$/, (id, n) => { tracer?.destroy(); tracer = null; reader.storyPage(id, +n); }],
   [/^#\/story\/([\w-]+)$/, (id) => { tracer?.destroy(); tracer = null; reader.storyPage(id, 0); }],
   [/^#\/tricky$/, () => { tracer?.destroy(); tracer = null; reader.trickyList(); }],
+  [/^#\/who$/, leave(() => grownups.who())],
+  [/^#\/grownups$/, leave(() => grownups.gate())],
+  [/^#\/games$/, leave(() => games.hub())],
+  [/^#\/game\/(match|hunt|build)$/, leave((g) => games[g]())],
+  [/^#\/count$/, leave(() => colour.countPage())],
+  [/^#\/colour$/, leave(() => colour.colourList())],
+  [/^#\/colour\/([\w-]+)$/, leave((id) => colour.colourPage(id))],
+  [/^#\/mixup$/, leave(() => mixup.mixupPage())],
+  [/^#\/stickers$/, leave(() => stickers.shop())],
+  [/^#\/stickers\/book$/, leave(() => stickers.book())],
 ];
 
 function route() {
   stopSpeaking();
   document.querySelectorAll('.confetti').forEach((c) => c.remove());
   const h = location.hash || '#/';
+  // everyone needs a player profile first
+  if (!profiles.current()) {
+    const first = profiles.list()[0];
+    if (first) profiles.setCurrent(first.id);
+    else if (!h.startsWith('#/who')) { location.hash = '#/who'; return; }
+  }
   for (const [re, fn] of routes) {
     const m = h.match(re);
     if (m) { fn(...m.slice(1)); return; }
@@ -538,3 +571,8 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 route();
+
+// offline support: save the app on this device
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

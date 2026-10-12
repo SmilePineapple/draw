@@ -1,10 +1,10 @@
 // Tiny helpers for sound effects + reading instructions aloud (works offline on iPad).
-import { store } from './store.js';
+import { gstore } from './store.js';
 
-export const prefs = { sound: store.get('sound', true) };
+export const prefs = { sound: gstore.get('sound', true) };
 export function setSound(on) {
   prefs.sound = on;
-  store.set('sound', on);
+  gstore.set('sound', on);
   if (!on) window.speechSynthesis?.cancel();
 }
 

@@ -7,6 +7,10 @@ A tiny, no-build web app for little kids (made for a 4- and 5-year-old on iPads)
 - **Words** – hero words, plus grown-ups can add the kids' names ("➕ Add a word").
 - **Stories** – six silly original stories starring the characters. "Read it to me" reads a whole story (words light up as they're read, pages turn by themselves); or the child reads on their own and **taps any tricky word** to hear it, see it split into syllables, "sound it out", or jump to **Write it**. Tapped words collect in **My tricky words**.
 - **Screen / Paper toggle** on every drawing, letter and word: in *Paper* mode the screen shows the model one step at a time and the child draws or writes it on real paper, then taps "Done! Next step". The 🖨️ button prints a worksheet (dotted letters/words to trace with a pencil, or a step-by-step drawing guide).
+- **Games** – Picture Match, Word Hunt (find a word in a story page), Word Builder (letter tiles), **Count & Colour** (count the heroes, then colour them), a **Colouring Book** (tap a shape to fill it) and **Silly Mix-up** (swap the top, eyes and mouth of any two or three characters).
+- **Sticker Book** – stars earned from drawing, writing, reading and games are spent in the shop; stickers are stuck on a scene (drag, resize, flip, backgrounds).
+- **Players** – a profile per child ("Who's playing?"); stars, stickers, progress and settings are saved separately. The **🔒 Grown-ups** page (behind a small sum) shows letters, drawings, stories, words, tricky words, games and a 14-day activity chart for each child, plus reset/rename/remove.
+- **Works offline** – a service worker saves the app on the device after the first visit.
 - 16 pen colours including white, and a **Next word** button.
 - Instructions are **read aloud** (iPad voice), with sound effects, stars, confetti and "Save picture".
 - Works with finger or Apple Pencil, portrait or landscape. Progress (stars, ⭐ badges, custom words) is stored on the device only.
@@ -26,6 +30,10 @@ Import the repo in Vercel. Framework preset: **Other**, no build command, no out
 (the project root is served as-is). Or from the CLI: `npx vercel --prod`.
 
 On the iPad: open the site in Safari → Share → **Add to Home Screen** for a full-screen app icon.
+
+## Offline support
+
+`sw.js` precaches the app. After adding or removing files run `node scripts/precache.mjs` to refresh its file list (and bump `VERSION` in `sw.js` if you want to force every device to re-download).
 
 ## Adding more stories
 
