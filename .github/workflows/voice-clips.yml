@@ -1,0 +1,41 @@
+# Records the British narrator voice (Microsoft Edge neural TTS) for everything the app says,
+# and commits the clips to audio/. Runs when the app's text changes, or by hand (Actions tab -> Run workflow).
+name: Voice clips
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/**'
+      - 'scripts/audio-texts.mjs'
+      - 'scripts/gen_audio.py'
+
+permissions:
+  contents: write
+
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install edge-tts
+      - run: node scripts/audio-texts.mjs
+      - run: python scripts/gen_audio.py
+      - name: Commit new clips
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audio
+          if git diff --cached --quiet; then
+            echo "No new clips"
+          else
+            git commit -m "Update British voice clips"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

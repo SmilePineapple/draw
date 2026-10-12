@@ -3,6 +3,8 @@ import { GLYPHS, CAPS, SMALLS, NUMS, charInfo, layoutText } from './glyphs.js';
 import { createTracer } from './tracer.js';
 import { prefs, setSound, speak, cheer, stopSpeaking, unlockOnFirstTouch } from './sound.js';
 import { createReader } from './reader.js';
+import { DEFAULT_WORDS } from './wordlist.js';
+import { P } from './phrases.js';
 import { store, addStar, stars, markDone, isDone, profiles } from './store.js';
 import { createGames } from './games.js';
 import { createColour } from './colour.js';
@@ -123,7 +125,7 @@ function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, hea
       [...progress.children].forEach((c, k) => c.classList.toggle('done', k < i));
       [...progress.children].forEach((c, k) => c.classList.toggle('now', k === i));
       const text = sayFor(i, step, steps);
-      lastSay = text.say;
+      lastSay = text.speak ?? text.say;
       sayEl.innerHTML = text.html ?? esc(text.say);
       if (text.speak ?? text.say) speak(text.speak ?? text.say);
       onStepUi?.(i, step);
@@ -151,7 +153,7 @@ function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, hea
     }
     w.querySelector('[data-act="again"]')?.addEventListener('click', () => resetUi());
     w.querySelector('[data-act="save"]')?.addEventListener('click', savePicture);
-    speak(winSay || 'Great job! You did it!');
+    speak(winSay || P.wellDone);
   }
   function resetUi() {
     $('#win').hidden = true;
@@ -272,7 +274,7 @@ function home() {
       </nav>
     </div>`;
   wireSound();
-  const say = { '.t-draw': 'Draw heroes!', '.t-letters': 'Letters!', '.t-words': 'Words!', '.t-stories': 'Stories!', '.t-games': 'Games!', '.t-stickers': 'Sticker book!' };
+  const say = { '.t-draw': P.tile.draw, '.t-letters': P.tile.letters, '.t-words': P.tile.words, '.t-stories': P.tile.stories, '.t-games': P.tile.games, '.t-stickers': P.tile.stickers };
   Object.entries(say).forEach(([sel, t]) => { $(sel).onclick = () => speak(t); });
 }
 
@@ -314,7 +316,7 @@ function drawPage(id) {
     sayFor(i, step, all) {
       $('#steplabel').textContent = `Step ${i + 1} of ${all.length}`;
       const say = step.say;
-      return { say, speak: i === 0 ? `Let's draw ${d.title}! ${say}` : say };
+      return { say, speak: i === 0 ? P.drawIntro(d.title, say) : say };
     },
     winHtml() {
       return `
@@ -330,7 +332,7 @@ function drawPage(id) {
           </div>
         </div>`;
     },
-    winSay: `You drew ${d.title}! Amazing job!`,
+    winSay: P.drawWin(d.title),
     onWin: () => markDone('draw', d.id),
   });
 }
@@ -383,10 +385,10 @@ function letterPage(set, ch) {
         const html = step.strokeCount > 1
           ? `Start at the <b class="g">green dot</b>.<br>Line <b>1</b> first!`
           : `Start at the <b class="g">green dot</b> and follow the line.`;
-        const say = isNum ? `Let's write the number ${info.name}. Start at the green dot.` : `${info.speak} Start at the green dot.`;
+        const say = isNum ? P.numberIntro(info.name) : P.letterStart(info.speak);
         return { say, html };
       }
-      return { say: `Now line ${step.strokeIndex + 1}.`, html: `Now line <b>${step.strokeIndex + 1}</b>!` };
+      return { say: P.nextLine(step.strokeIndex + 1), html: `Now line <b>${step.strokeIndex + 1}</b>!` };
     },
     winHtml() {
       return `
@@ -400,19 +402,13 @@ function letterPage(set, ch) {
           </div>
         </div>`;
     },
-    winSay: isNum ? `Great number ${info.name}!` : `Great letter ${info.name}!`,
+    winSay: isNum ? P.greatNumber(info.name) : P.greatLetter(info.name),
     onWin: () => markDone('letter', ch),
   });
 }
 
 // ---------------------------------------------------------------- words
-const DEFAULT_WORDS = [
-  ['Bluey', '🐶'], ['Bingo', '🐕'], ['Hulk', '💚'], ['Thor', '⚡'], ['Yoda', '🟢'], ['Luke', '🗡️'],
-  ['Vader', '🖤'], ['Catboy', '🐱'], ['Owlette', '🦉'], ['Gekko', '🦎'], ['Hero', '🦸'], ['Star', '⭐'],
-  ['Mom', '💖'], ['Dad', '💙'], ['Love', '❤️'], ['Cat', '🐈'], ['Dog', '🐕'], ['Sun', '☀️'],
-  ['Bandit', '🐕'], ['Chilli', '🐕'], ['Muffin', '🐶'], ['Socks', '🐾'], ['Groot', '🌳'], ['Grogu', '💚'],
-  ['Chewie', '🐻'], ['Boba', '🚀'], ['Luna', '🌙'], ['Ninja', '🥷'], ['Panther', '🐆'],
-];
+
 const getCustom = () => store.get('words', []);
 const caseStyle = () => store.get('case', 'Abc');
 function styled(w) {
@@ -496,10 +492,10 @@ function wordPage(raw) {
         return {
           say: `Write ${info.name}.`,
           html: `Write the ${/[0-9]/.test(step.letter) ? 'number' : what + ' letter'} <b class="g">${esc(step.letter)}</b>`,
-          speak: `${info.name}. Start at the green dot.`,
+          speak: P.wordLetter(info.name),
         };
       }
-      return { say: `Keep going! Line ${step.strokeIndex + 1}.`, html: `Keep going! Line <b>${step.strokeIndex + 1}</b>` };
+      return { say: P.keepGoing(step.strokeIndex + 1), html: `Keep going! Line <b>${step.strokeIndex + 1}</b>` };
     },
     winHtml() {
       return `
@@ -514,7 +510,7 @@ function wordPage(raw) {
           </div>
         </div>`;
     },
-    winSay: `You wrote ${text}! Great job!`,
+    winSay: P.wroteWin(text),
     onWin: () => markDone('word', word.toLowerCase()),
   });
 }

@@ -1,18 +1,17 @@
 // Silly Mix-up: swap the top, middle and bottom of any character's face.
 import { drawingById } from './drawings.js';
-import { speak, ding, cheer } from './sound.js';
+import { speak, speakSeq, ding, cheer } from './sound.js';
+import { MIX_HEADS, mixName } from './wordlist.js';
+import { P } from './phrases.js';
 import { addStar, markDone } from './store.js';
 import { pick, savePng, svgToPng } from './util.js';
 
-const HEADS = ['bluey', 'bingo', 'bandit', 'chilli', 'muffin', 'socks', 'hulk', 'spidey', 'ironman', 'vader', 'trooper', 'yoda',
-  'catboy', 'owlette', 'gekko', 'luna', 'ninja', 'cat', 'dog', 'pig', 'rabbit', 'penguin', 'chewie', 'grogu', 'boba',
-  'panther', 'thor', 'captain', 'groot'].filter((id) => drawingById(id));
+const HEADS = MIX_HEADS;
 
 // [y0, y1] slices of the 400x400 drawing box
 const BANDS = [[20, 170], [170, 265], [265, 392]];
 const W = 400;
 
-const firstName = (d) => d.title.split(' ').slice(-1)[0];
 
 export function createMixup({ app, $, esc, topBar, wireSound, drawingThumb, starsBadge, confetti }) {
   const inner = (id) => drawingThumb(drawingById(id)).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
@@ -45,11 +44,12 @@ export function createMixup({ app, $, esc, topBar, wireSound, drawingThumb, star
       </div>`;
     wireSound();
 
-    const name = () => sel.map((id) => firstName(drawingById(id))).join(' ');
+    const name = () => sel.map((id) => mixName(id)).join(' + ');
+    const sayIt = () => speakSeq([P.itsA, ...sel.map((id) => mixName(id))], { rate: 0.85, gap: 120 });
     function paint(speakIt = false) {
       sel.forEach((id, b) => { $(`#band${b}`).innerHTML = inner(id); });
       $('#mname').textContent = name();
-      if (speakIt) speak(`It's a ${name()}!`);
+      if (speakIt) sayIt();
     }
     paint(false);
 
@@ -63,7 +63,7 @@ export function createMixup({ app, $, esc, topBar, wireSound, drawingThumb, star
       paint(false);
     });
     $('#rand').onclick = () => { for (let i = 0; i < 3; i++) sel[i] = pick(HEADS); cheer(); paint(true); };
-    $('#say').onclick = () => speak(`It's a ${name()}!`);
+    $('#say').onclick = sayIt;
     $('#save').onclick = async () => {
       const h = BANDS.reduce((a, [y0, y1]) => a + (y1 - y0), 0);
       let y = 0;
@@ -73,7 +73,7 @@ export function createMixup({ app, $, esc, topBar, wireSound, drawingThumb, star
         return part;
       }).join('');
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${h}" width="1200" height="${Math.round(1200 * h / W)}">${parts}</svg>`;
-      await savePng(await svgToPng(svg, 1200, Math.round(1200 * h / W)), `silly-${name().replace(/\s+/g, '-').toLowerCase()}`);
+      await savePng(await svgToPng(svg, 1200, Math.round(1200 * h / W)), `silly-${name().replace(/[^A-Za-z0-9]+/g, '-').toLowerCase()}`);
       if (!starred) { starred = true; addStar(1); markDone('mixup', name()); confetti(); }
     };
   }

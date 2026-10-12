@@ -10,8 +10,7 @@ export const MORE2 = [
       { say: 'Draw a big rounded mask.', paths: ['M200 50C275 50 320 110 322 190C324 270 290 340 250 365H150C110 340 76 270 78 190C80 110 125 50 200 50Z'], fill: '#2b2b3a' },
       { say: 'Draw two small pointy ears.', paths: ['M105 115L92 50L152 88', 'M295 115L308 50L248 88'], fill: '#2b2b3a', z: -1 },
       { say: 'Draw two angry white eyes.', paths: ['M108 182L178 196L172 218L112 210Z', 'M292 182L222 196L228 218L288 210Z'], fill: '#ffffff' },
-      { say: 'Draw a little triangle nose.', paths: ['M188 226H212L200 266Z'], fill: '#55556b' },
-      { say: 'Draw two silver stripes.', paths: ['M128 98L140 92L182 140L170 148Z', 'M272 98L260 92L218 140L230 148Z'], fill: '#cfd4da' },
+      { say: 'Draw his silver necklace.', paths: ['M118 342Q200 404 282 342L262 326Q200 376 138 326Z'], fill: '#cfd4da' },
     ],
   },
   {
@@ -30,7 +29,7 @@ export const MORE2 = [
     steps: [
       { say: 'Draw a round face.', paths: [c(200, 238, 104)], fill: '#f5cba7' },
       { say: 'Draw the blue hood.', paths: ['M92 228C84 120 135 60 200 60C265 60 316 120 308 228C290 192 255 178 200 178C145 178 110 192 92 228Z'], fill: '#1d4ed8' },
-      { say: 'Draw a white star on the hood.', paths: [star(200, 118, 24, 10)], fill: '#ffffff' },
+      { say: 'Draw a white letter A on the hood.', paths: ['M200 88L226 146H210L205 132H195L190 146H174Z'], fill: '#ffffff' },
       { say: 'Draw two eyes.', paths: [c(160, 225, 11), c(240, 225, 11)], fill: '#2b2b3a' },
       { say: 'Draw a big smile.', paths: ['M162 285Q200 315 238 285'] },
     ],
@@ -92,13 +91,11 @@ export const MORE2 = [
     id: 'luna', title: 'Luna Girl', cowl: '#7e3ff2',
     ears: ['M96 150C58 132 58 78 100 68C132 74 136 112 132 138', 'M304 150C342 132 342 78 300 68C268 74 264 112 268 138'],
     nose: { say: 'Draw a tiny nose.', d: 'M200 238L190 252H210Z', fill: '#ff9db0' },
-    extra: [{ say: 'Draw a moon on the forehead!', paths: ['M214 112A26 26 0 1 0 214 160A19 19 0 1 1 214 112Z'], fill: '#ffe066' }],
   }),
   pjHero({
     id: 'ninja', title: 'Night Ninja', cowl: '#3a3f66',
     ears: ['M110 140L84 84L150 112', 'M290 140L316 84L250 112'],
     nose: { say: 'Draw a tiny nose.', d: 'M200 238L190 252H210Z', fill: '#e5b99a' },
     skin: '#f0e0cf',
-    extra: [{ say: 'Draw a sneaky star on the forehead!', paths: [star(200, 140, 18, 8)], fill: '#c4b5fd' }],
   }),
 ];

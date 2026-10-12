@@ -1,3 +1,4 @@
+import { LETTER_SPELL } from './wordlist.js';
 // Handwriting glyphs. Every glyph is drawn in a box that is ~100 wide:
 //   y=20  top line (capitals / tall letters)
 //   y=60  middle line (small letters)
@@ -86,10 +87,10 @@ export const GLYPHS = {
 // name + sound + picture for each letter (read aloud)
 export const ABC_INFO = {
   a: ['apple', '🍎'], b: ['ball', '⚽'], c: ['cat', '🐱'], d: ['dog', '🐶'], e: ['egg', '🥚'],
-  f: ['fish', '🐟'], g: ['goat', '🐐'], h: ['hat', '🎩'], i: ['igloo', '🧊'], j: ['jam', '🍓'],
-  k: ['kite', '🪁'], l: ['lion', '🦁'], m: ['moon', '🌙'], n: ['nest', '🪺'], o: ['octopus', '🐙'],
+  f: ['fish', '🐟'], g: ['goat', '🐐'], h: ['hat', '🎩'], i: ['ice cream', '🍦'], j: ['juice', '🧃'],
+  k: ['kite', '🪁'], l: ['lion', '🦁'], m: ['moon', '🌙'], n: ['nose', '👃'], o: ['octopus', '🐙'],
   p: ['pig', '🐷'], q: ['queen', '👑'], r: ['rocket', '🚀'], s: ['sun', '☀️'], t: ['tiger', '🐯'],
-  u: ['umbrella', '☂️'], v: ['van', '🚐'], w: ['whale', '🐳'], x: ['x-ray', '🩻'], y: ['yo-yo', '🪀'],
+  u: ['umbrella', '☂️'], v: ['van', '🚐'], w: ['whale', '🐳'], x: ['xylophone', '🎶'], y: ['yo-yo', '🪀'],
   z: ['zebra', '🦓'],
 };
 const NUM_NAMES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
@@ -108,7 +109,7 @@ export function charInfo(ch) {
     name: ch.toUpperCase(),
     big: ch,
     caption: `${ch.toUpperCase()} is for ${word}`,
-    speak: `${isCap ? 'Capital' : 'Small'} ${ch.toUpperCase()}. ${ch.toUpperCase()} is for ${word}.`,
+    speak: `${isCap ? 'Capital' : 'Small'} ${LETTER_SPELL[lower]}. ${LETTER_SPELL[lower]} is for ${word}.`,
     emoji,
   };
 }

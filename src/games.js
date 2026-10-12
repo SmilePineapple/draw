@@ -4,15 +4,10 @@ import { STORIES, WORD_PICS } from './stories.js';
 import { speak, ding, oops, cheer, stopSpeaking } from './sound.js';
 import { addStar, store, logActivity } from './store.js';
 import { shuffle, pick, sample } from './util.js';
+import { PICS } from './wordlist.js';
+import { P, L } from './phrases.js';
 
-// word -> drawing id (pictures we can show)
-const PICS = [
-  ['cat', 'cat'], ['dog', 'dog'], ['pig', 'pig'], ['fish', 'fish'], ['bird', 'bird'], ['star', 'star'], ['sun', 'sun'],
-  ['tree', 'tree'], ['house', 'house'], ['car', 'car'], ['apple', 'apple'], ['heart', 'heart'], ['rocket', 'rocket'],
-  ['flower', 'flower'], ['turtle', 'turtle'], ['bunny', 'rabbit'], ['penguin', 'penguin'], ['balloon', 'balloon'],
-  ['hulk', 'hulk'], ['yoda', 'yoda'], ['bluey', 'bluey'], ['bingo', 'bingo'], ['vader', 'vader'], ['catboy', 'catboy'],
-  ['gekko', 'gekko'], ['owlette', 'owlette'], ['groot', 'groot'], ['thor', 'thor'], ['grogu', 'grogu'], ['sword', 'lightsaber'],
-].filter(([, id]) => drawingById(id));
+
 
 const STOP = new Set('the and was were his her she him they them that this with had has have for are you not but all out day one then what when from there their said went into just very over some would could back more'.split(' '));
 
@@ -81,7 +76,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
           </div>
         </div>`;
       $('#again').addEventListener('click', (e) => { e.preventDefault(); stopSpeaking(); games[id](); });
-      speak(`${firstTry} out of ${total}! ${bonus ? 'Amazing!' : 'Well done!'}`);
+      speak(P.score(firstTry, total));
     }
     next();
   }
@@ -105,7 +100,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
           : `<div class="g-prompt">Which picture is this word?</div>
              <div class="g-word"><span>${esc(styled(word))}</span><button class="btn round" id="hear" aria-label="Hear it">🔊</button></div>
              <div class="g-opts pics">${opts.map(([w, pid]) => `<button class="btn g-opt pic" data-w="${w}">${art(pid)}</button>`).join('')}</div>`;
-        speak(p2w ? 'Which word matches the picture?' : 'Which picture is this word?');
+        speak(p2w ? P.matchP2W : P.matchW2P);
         $('#hear')?.addEventListener('click', () => speak(word));
         body.querySelector('.g-opts').addEventListener('click', (e) => {
           const b = e.target.closest('.g-opt');
@@ -121,7 +116,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
             b.disabled = true;
             b.classList.add('wrong');
             oops();
-            speak(p2w ? `That says ${b.dataset.w}. Try again!` : `That is a ${b.dataset.w}. Try again!`);
+            speak(p2w ? P.wrongWord(b.dataset.w) : P.wrongPic(b.dataset.w));
           }
         });
       },
@@ -167,8 +162,8 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
           <div class="g-word hunt"><span>🔎 Find: <b>${esc(styled(target))}</b> ${WORD_PICS[target] || ''}</span><button class="btn round" id="hear" aria-label="Hear it">🔊</button></div>
           <div class="hunt-scene">${(page.art || []).map((a) => `<div class="actor">${art(a)}</div>`).join('')}</div>
           <p class="story-text hunt-text" id="ht">${textHtml}</p>`;
-        speak(`Can you find the word ${target}?`);
-        $('#hear').addEventListener('click', () => speak(`Find the word ${target}`));
+        speak(P.findWord(target));
+        $('#hear').addEventListener('click', () => speak(P.findShort(target)));
         let found = false;
         $('#ht').addEventListener('click', (e) => {
           const w = e.target.closest('.w');
@@ -176,13 +171,13 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
           if (w.dataset.w === target) {
             found = true;
             w.classList.add('found');
-            ding(); speak(`Yes! ${target}!`);
+            ding(); speak(P.foundIt(target));
             done(!missed);
           } else {
             missed = true;
             w.classList.add('miss');
             oops();
-            speak(`That says ${w.dataset.w}. Keep looking!`);
+            speak(P.keepLooking(w.dataset.w));
           }
         });
       },
@@ -208,7 +203,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
           <div class="slots" id="slots">${letters.map(() => '<span class="slot"></span>').join('')}</div>
           <div class="tiles" id="tiles">${tiles.map((t) => `<button class="tile-btn" data-k="${t.k}" data-ch="${t.ch}">${esc(tileCase(t.ch))}</button>`).join('')}</div>
           <button class="btn" id="hint">💡 Help me</button>`;
-        speak(`Build the word ${word}`);
+        speak(P.buildWord(word));
         const slots = [...body.querySelectorAll('.slot')];
         $('#hint').addEventListener('click', () => {
           speak(word);
@@ -224,7 +219,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
             b.classList.remove('hintme');
             slots[pos].textContent = tileCase(b.dataset.ch);
             slots[pos].classList.add('filled');
-            speak(b.dataset.ch, { rate: 0.8 });
+            speak(L(b.dataset.ch), { rate: 0.8 });
             pos++;
             if (pos === letters.length) {
               cheer();
@@ -236,7 +231,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
             oops();
             b.classList.add('shake');
             setTimeout(() => b.classList.remove('shake'), 400);
-            speak(`Not ${b.dataset.ch}. Try again!`);
+            speak(P.notThat(b.dataset.ch));
           }
         });
       },

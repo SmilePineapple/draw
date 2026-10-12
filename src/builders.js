@@ -8,7 +8,7 @@ export function blueyLike({ id, title, head, ear, muzzle }) {
     steps: [
       { say: 'Draw a big round head.', paths: ['M90 195C80 115 140 82 200 82C260 82 320 115 310 195C305 275 260 332 200 332C140 332 95 275 90 195Z'], fill: head },
       { say: 'Draw two pointy ears.', paths: ['M110 130L52 42L160 92', 'M290 130L348 42L240 92'], fill: ear, z: -1 },
-      { say: 'Draw a round tummy-coloured snout.', paths: [e(200, 265, 68, 52)], fill: muzzle },
+      { say: 'Draw a round snout.', paths: [e(200, 265, 68, 52)], fill: muzzle },
       { say: 'Draw a little nose.', paths: [e(200, 228, 26, 17)], fill: '#2b2b3a' },
       { say: 'Draw two eyes.', paths: [c(152, 175, 13), c(248, 175, 13)], fill: '#2b2b3a' },
       { say: 'Draw a big smile!', paths: ['M200 245V268', 'M168 272Q200 302 232 272'] },

@@ -4,6 +4,8 @@ import { STORIES } from './stories.js';
 import { CAPS, SMALLS, NUMS } from './glyphs.js';
 import { profiles, storeOf, starsEarned, starsSpent, doneOf } from './store.js';
 import { prefs, setSound, speak } from './sound.js';
+import { voiceStatus, downloadVoices } from './offline.js';
+import { P } from './phrases.js';
 
 const AVATARS = ['bluey', 'bingo', 'spidey', 'hulk', 'yoda', 'catboy', 'owlette', 'gekko', 'grogu', 'chewie', 'penguin', 'cat', 'dog', 'rabbit', 'ironman', 'trooper']
   .filter((id) => drawingById(id));
@@ -30,7 +32,7 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
       </div>`;
     app.querySelectorAll('.player[data-id]').forEach((b) => b.addEventListener('click', () => {
       profiles.setCurrent(b.dataset.id);
-      speak(`Hi ${profiles.get(b.dataset.id)?.name}!`);
+      speak(P.hello);
       location.hash = '#/';
     }));
     $('#add').addEventListener('click', () => profileForm());
@@ -64,7 +66,7 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
       if (existing) { profiles.update(existing.id, { name, avatar }); sheet.hidden = true; dashboard(existing.id); return; }
       profiles.add({ name, avatar });
       confetti();
-      speak(`Hi ${name}!`);
+      speak(P.hello);
       location.hash = '#/';
     };
   }
@@ -201,6 +203,8 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
               <button class="tab ${!prefs.sound ? 'on' : ''}" id="snd-off">🔇 Off</button>
             </div>
             <p id="offline" class="offline-note">Checking offline status…</p>
+            <p id="voice" class="offline-note">Checking voice…</p>
+            <button class="btn" id="dlvoice" hidden>⬇️ Save voices for offline</button>
             <button class="link" id="lock">🔒 Lock this page</button>
           </section>
         </main>
@@ -227,6 +231,31 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
     $('#snd-off').onclick = () => { setSound(false); dashboard(p.id); };
     $('#lock').onclick = () => { unlocked = false; location.hash = '#/'; };
     offlineStatus();
+    voiceInfo();
+  }
+
+  async function voiceInfo() {
+    const el = $('#voice');
+    const btn = $('#dlvoice');
+    if (!el) return;
+    const refresh = async () => {
+      const { total, saved } = await voiceStatus();
+      if (!total) {
+        el.textContent = '🎙️ Voice: using this iPad\'s own voice (the British recordings have not been added yet).';
+        btn.hidden = true;
+        return;
+      }
+      el.textContent = `🎙️ Voice: British narrator — ${total} recordings, ${saved} saved for offline.`;
+      btn.hidden = saved >= total;
+    };
+    await refresh();
+    btn.onclick = async () => {
+      btn.disabled = true;
+      await downloadVoices((d, t) => { btn.textContent = `Saving… ${d}/${t}`; });
+      btn.textContent = '⬇️ Save voices for offline';
+      btn.disabled = false;
+      refresh();
+    };
   }
 
   async function offlineStatus() {

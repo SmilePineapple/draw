@@ -171,7 +171,6 @@ export const DRAWINGS = [
     id: 'owlette', title: 'Owlette', cowl: '#d62f3d',
     ears: ['M104 146L92 62L172 112', 'M296 146L308 62L228 112'],
     nose: { say: 'Draw a little beak.', d: 'M200 236L188 250L200 264L212 250Z', fill: '#ffc83d' },
-    extra: [{ say: 'Draw a star on the forehead!', paths: [star(200, 140, 18, 8)], fill: '#ffc83d' }],
   }),
   pjHero({
     id: 'gekko', title: 'Gekko', cowl: '#26a65b',

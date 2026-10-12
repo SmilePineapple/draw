@@ -78,12 +78,12 @@ export const STORIES = [
     id: 'mud', title: 'Muffin and the Mud Puddle', bg: ['#e9f7ff', '#e4ffe0'], cover: ['muffin', 'socks'],
     pages: [
       { art: ['muffin', 'socks'], props: '🌧️', text: 'It had rained all day. Muffin and Socks saw a big mud puddle.', sfx: 'Splish!' },
-      { art: ['muffin'], text: '"Do not jump in it," said Mum. Muffin looked at the puddle. The puddle looked at Muffin.' },
+      { art: ['chilli', 'muffin'], text: '"Do not jump in it," said Auntie Chilli. Muffin looked at the puddle. The puddle looked at Muffin.' },
       { art: ['socks'], text: 'Socks put one toe in. Then two toes. Then she tripped!', sfx: 'Whoops!' },
       { art: ['socks'], props: '💦', text: 'SPLASH! Socks was a mud monster. "Rawr!" she said.', sfx: 'Splash!' },
       { art: ['muffin', 'socks'], text: 'Muffin laughed so hard that she fell in too. Now there were two mud monsters.', sfx: 'Hee hee!' },
-      { art: ['chilli'], props: '🛁', text: 'Mum looked at the two monsters. "Bath time," she said, and she smiled.' },
-      { art: ['muffin', 'socks', 'chilli'], props: '🫧', text: 'The bath was full of bubbles. Muffin and Socks looked like two fluffy clouds.', sfx: 'Bubble pop!' },
+      { art: ['chilli'], props: '🛁', text: 'Auntie Chilli looked at the two monsters. "Bath time," she said, and she smiled.' },
+      { art: ['muffin', 'socks', 'chilli'], props: '🧼', text: 'The bath was full of bubbles. Muffin and Socks looked like two fluffy clouds.', sfx: 'Bubble pop!' },
     ],
   },
   {
@@ -115,7 +115,7 @@ export const STORIES = [
     pages: [
       { art: ['thor', 'hammer'], text: 'Thor loved his big hammer. He took it everywhere. Even to bed.' },
       { art: ['hammer'], props: '🧺', text: 'One day his hammer got very dirty. So Thor put it in the wash.', sfx: 'Splash!' },
-      { art: ['hammer'], props: '🫧', text: 'The washing machine went round and round. Round and round and round.' },
+      { art: ['hammer'], props: '🧼', text: 'The washing machine went round and round. Round and round and round.' },
       { art: ['thor'], props: '😱', text: 'Thor opened the door. "My hammer!" he said. It had gone tiny!', sfx: 'Gasp!' },
       { art: ['groot', 'hammer'], text: 'Groot looked at the tiny hammer. "I am Groot," he said. He thought it was cute.' },
       { art: ['thor', 'groot'], text: 'Thor tried to smash a rock. Tap, tap, tap. The rock just giggled.', sfx: 'Tap tap!' },
@@ -140,7 +140,7 @@ export const storyById = (id) => STORIES.find((s) => s.id === id);
 
 // small picture dictionary for the word-help card
 export const WORD_PICS = {
-  hot: '🌭', dog: '🐶', duck: '🦆', rain: '🌧️', mud: '🟤', puddle: '💦', bath: '🛁', bubbles: '🫧', moon: '🌕', cheese: '🧀', ladder: '🪜', pizza: '🍕', pillows: '🛏️', hammer: '🔨', rock: '🪨', tiny: '🤏', washing: '🧺', band: '🎶', song: '🎵',
+  hot: '🌭', dog: '🐶', duck: '🦆', rain: '🌧️', mud: '🟤', puddle: '💦', bath: '🛁', bubbles: '🧼', moon: '🌕', cheese: '🧀', ladder: '🪜', pizza: '🍕', pillows: '🛏️', hammer: '🔨', rock: '🪨', tiny: '🤏', washing: '🧺', band: '🎶', song: '🎵',
   balloon: '🎈', cookie: '🍪', cookies: '🍪', pie: '🥧', sock: '🧦', banana: '🍌', cloud: '☁️', water: '💧', lake: '🏞️',
   trees: '🌳', tree: '🌳', helmet: '⛑️', head: '🙂', hat: '🎩', dog: '🐶', bowl: '🥣', night: '🌙', bed: '🛏️', spider: '🕷️',
   spoon: '🥄', biscuit: '🍪', sky: '🌤️', crumbs: '🍞', nose: '👃', chocolate: '🍫', tummy: '🤰', door: '🚪', wall: '🧱',

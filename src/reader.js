@@ -4,6 +4,7 @@ import { drawingById } from './drawings.js';
 import { GLYPHS } from './glyphs.js';
 import { speak, speakSync, speakSeq, stopSpeaking, prefs, setSound } from './sound.js';
 import { store, addStar, markDone, isDone } from './store.js';
+import { P } from './phrases.js';
 
 const WORD_RE = /[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g;
 
@@ -210,7 +211,7 @@ export function createReader({ app, $, esc, topBar, wireSound, drawingThumb, sta
       addStar(1);
       markDone('story', id);
       confetti();
-      speak('The end! Great reading!');
+      speak(P.theEnd);
       return;
     }
 

@@ -3,6 +3,7 @@ import { DRAWINGS, GROUPS, drawingById } from './drawings.js';
 import { ding, cheer, speak } from './sound.js';
 import { store, stars, spendStars } from './store.js';
 import { fitBox } from './util.js';
+import { P } from './phrases.js';
 
 const EMOJI = ['🌈', '🦄', '🍕', '⚽', '🎸', '🚀', '🦖', '🐙', '🍦', '🎈', '🌟', '🏰', '🚂', '🚁', '🍩', '🐝', '🦋', '🌻', '🍉', '🎂', '🛸', '🐳', '🦁', '🐸'];
 const SHOP = [
@@ -72,12 +73,12 @@ export function createStickers({ app, $, esc, topBar, wireSound, drawingThumb, s
         if (!spendStars(it.price)) return;
         store.set('stickers', [...owned(), id]);
         cheer(); confetti();
-        speak('You got a new sticker!');
+        speak(P.gotSticker);
         sheet.hidden = true;
         shop();
       }
     };
-    if (!have && !can) speak('You need more stars!');
+    if (!have && !can) speak(P.needStars);
   }
 
   // ------------------------------------------------------------ book (sticker board)

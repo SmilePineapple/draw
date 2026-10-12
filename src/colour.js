@@ -3,6 +3,8 @@ import { DRAWINGS, drawingById } from './drawings.js';
 import { speak, ding, oops, cheer } from './sound.js';
 import { addStar, markDone, isDone } from './store.js';
 import { fitBox, savePng, svgToPng, paletteHtml, wirePalette, pick, shuffle } from './util.js';
+import { COUNTABLES } from './wordlist.js';
+import { P } from './phrases.js';
 
 const STROKE = '#2b2b3a';
 
@@ -18,16 +20,7 @@ function colourSvg(d) {
   return `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">${layers}</svg>`;
 }
 
-// things that are fun to count (id -> plural)
-export const COUNTABLES = [
-  ['hulk', 'Hulks'], ['spidey', 'Spidey masks'], ['yoda', 'Yodas'], ['bluey', 'Blueys'], ['bingo', 'Bingos'],
-  ['trooper', 'Stormtroopers'], ['catboy', 'Catboys'], ['owlette', 'Owlettes'], ['gekko', 'Gekkos'],
-  ['cat', 'cats'], ['dog', 'puppies'], ['fish', 'fish'], ['bird', 'birds'], ['butterfly', 'butterflies'],
-  ['turtle', 'turtles'], ['rabbit', 'bunnies'], ['penguin', 'penguins'], ['pig', 'piggies'], ['apple', 'apples'],
-  ['star', 'stars'], ['heart', 'hearts'], ['sun', 'suns'], ['rocket', 'rockets'], ['icecream', 'ice creams'],
-  ['balloon', 'balloons'], ['car', 'cars'], ['house', 'houses'], ['flower', 'flowers'], ['tree', 'trees'],
-  ['bb8', 'BB-8s'], ['r2d2', 'R2-D2s'], ['grogu', 'Grogus'], ['groot', 'Groots'], ['muffin', 'Muffins'], ['shield', 'shields'],
-].filter(([id]) => drawingById(id));
+
 
 export function createColour({ app, $, esc, topBar, wireSound, drawingThumb, starsBadge, confetti }) {
   let stopFit = () => {};
@@ -130,7 +123,7 @@ export function createColour({ app, $, esc, topBar, wireSound, drawingThumb, sta
     let counted = 0;
     let colour = '#e53935';
     const speakSay = (t) => { say.textContent = t; speak(t); };
-    speakSay(`Tap each ${plural} to count them!`);
+    speakSay(P.tapToCount(plural));
 
     grid.addEventListener('click', (e) => {
       const item = e.target.closest('.count-item');
@@ -157,14 +150,14 @@ export function createColour({ app, $, esc, topBar, wireSound, drawingThumb, sta
       const box = $('#answers');
       box.hidden = false;
       box.innerHTML = shuffle([...opts]).map((x) => `<button class="btn ans" data-n="${x}">${x}</button>`).join('');
-      speakSay(`How many ${plural} are there?`);
+      speakSay(P.howMany(plural));
       box.onclick = (e) => {
         const b = e.target.closest('.ans');
         if (!b) return;
         if (+b.dataset.n === n) {
           box.hidden = true;
           cheer();
-          speakSay(`Yes! ${n} ${plural}! Now colour them in!`);
+          speakSay(P.countYes(n, plural));
           grid.querySelectorAll('.count-badge').forEach((x) => x.remove());
           phase = 'colour';
           $('#pal').hidden = false;
@@ -172,7 +165,7 @@ export function createColour({ app, $, esc, topBar, wireSound, drawingThumb, sta
         } else {
           oops();
           b.classList.add('wrong');
-          speak(`That is ${b.dataset.n}. Let's count again!`);
+          speak(P.countNo(b.dataset.n));
           b.disabled = true;
         }
       };
@@ -190,7 +183,7 @@ export function createColour({ app, $, esc, topBar, wireSound, drawingThumb, sta
       w.innerHTML = `<div class="win-card"><div class="win-emoji">🎉</div><h3>You counted ${n} ${esc(plural)}!</h3>
         <div class="win-actions"><a class="btn big-btn next" href="#/count" id="again">➡ Count more</a><a class="btn big-btn alt" href="#/games">🎮 All games</a></div></div>`;
       w.querySelector('#again').addEventListener('click', (e) => { e.preventDefault(); countPage(); });
-      speak(`Great counting and colouring!`);
+      speak(P.countDone);
     };
   }
 
