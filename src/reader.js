@@ -264,7 +264,7 @@ export function createReader({ app, $, esc, topBar, wireSound, drawingThumb, sta
       reading = true;
       readBtn.innerHTML = '⏹ Stop';
       speakSync(page.text, {
-        rate: 0.8, starts,
+        rate: 0.8, starts, words: wordEls.map((el) => el.textContent),
         onWord: lit,
         onEnd() {
           reading = false;

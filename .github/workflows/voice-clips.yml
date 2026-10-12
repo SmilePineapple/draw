@@ -13,12 +13,19 @@ on:
 permissions:
   contents: write
 
+# one at a time, so two pushes in a row can't both try to commit clips
+concurrency:
+  group: voice-clips
+  cancel-in-progress: false
+
 jobs:
   voice:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # latest branch tip, so clips recorded by an earlier run are already there
       - uses: actions/setup-node@v4
         with:
           node-version: 20

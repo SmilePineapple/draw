@@ -229,7 +229,7 @@ export function speakSeq(list, { rate = 0.6, gap = 420, onEach, onEnd, pitch } =
  * events are used, or an estimate (iPad Safari doesn't always send word boundaries).
  * `starts` = character offset where each word begins.
  */
-export function speakSync(text, { rate = 0.8, starts = [], onWord, onEnd } = {}) {
+export function speakSync(text, { rate = 0.8, starts = [], words = [], onWord, onEnd } = {}) {
   stopSpeaking();
   const mine = token;
   whenReady(mine, () => {
@@ -240,31 +240,62 @@ export function speakSync(text, { rate = 0.8, starts = [], onWord, onEnd } = {})
     }
     if (!window.speechSynthesis) { onEnd?.(); return; }
     if (clips && Object.keys(clips).length) missingClips.add(text);
+
     let gotBoundary = false;
     let finished = false;
+    let last = -1; // the highlight only ever moves forwards
     const timers = [];
+    const show = (i) => {
+      if (i <= last || mine !== token || finished) return;
+      last = i;
+      onWord?.(i);
+    };
+    const norm = (w) => w.toLowerCase().replace(/[^a-z0-9]/g, '');
     const finish = () => {
       if (finished || mine !== token) return;
       finished = true;
       timers.forEach(clearTimeout);
       onEnd?.();
     };
+
     const u = makeUtterance(text, { rate });
     u.onboundary = (e) => {
       if (mine !== token || (e.name && e.name !== 'word')) return;
-      gotBoundary = true;
-      let idx = 0;
-      starts.forEach((st, i) => { if (st <= e.charIndex) idx = i; });
-      onWord?.(idx);
+      if (!gotBoundary) {
+        gotBoundary = true;
+        timers.forEach(clearTimeout); // real word events take over from the estimate
+        timers.length = 0;
+      }
+      // 1) match the word that is actually being spoken (robust to the voice reporting slightly-off offsets)
+      let idx = -1;
+      const spoken = (text.slice(e.charIndex, e.charIndex + (e.charLength || 24)).match(/[A-Za-z0-9]+(?:['\u2019-][A-Za-z0-9]+)*/) || [''])[0];
+      if (words.length && spoken) {
+        const from = Math.max(last, 0);
+        for (let j = from; j < Math.min(words.length, from + 4); j++) {
+          if (norm(words[j]) === norm(spoken)) { idx = j; break; }
+        }
+      }
+      // 2) otherwise fall back to the character offset
+      if (idx < 0) {
+        // the first word that has not ended yet at that position (so an offset in the gap before a word means that word)
+        for (let i = 0; i < starts.length; i++) {
+          const end = starts[i] + (words[i] ? words[i].length : 1);
+          if (e.charIndex < end) { idx = i; break; }
+        }
+      }
+      if (idx < 0 || (last >= 0 && idx > last + 3)) return; // ignore nonsense jumps
+      show(idx);
     };
     u.onend = finish;
     u.onerror = finish;
+
+    // some iPad voices send no word events at all: after a moment, estimate the timing instead
     timers.push(setTimeout(() => {
       if (gotBoundary || mine !== token || finished) return;
       let t = 0;
       starts.forEach((st, i) => {
         const next = starts[i + 1] ?? text.length;
-        timers.push(setTimeout(() => { if (mine === token && !finished) onWord?.(i); }, t));
+        timers.push(setTimeout(() => { if (!gotBoundary) show(i); }, t));
         t += ((next - st) * 62 + 130) / rate / 0.8;
       });
     }, 700));
