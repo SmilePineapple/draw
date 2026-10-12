@@ -1,7 +1,8 @@
 import { DRAWINGS, GROUPS, drawingById } from './drawings.js';
 import { GLYPHS, CAPS, SMALLS, NUMS, charInfo, layoutText } from './glyphs.js';
 import { createTracer } from './tracer.js';
-import { prefs, setSound, speak, cheer, unlockOnFirstTouch } from './sound.js';
+import { prefs, setSound, speak, cheer, stopSpeaking, unlockOnFirstTouch } from './sound.js';
+import { createReader } from './reader.js';
 import { store, addStar, stars, markDone, isDone } from './store.js';
 
 const app = document.getElementById('app');
@@ -257,12 +258,14 @@ function home() {
         <a class="tile t-draw" href="#/draw"><span class="big">🎨</span><b>Draw Heroes</b><small>Spidey, Bluey, Yoda &amp; more</small></a>
         <a class="tile t-letters" href="#/letters"><span class="big">✏️</span><b>Letters</b><small>A B C &amp; 1 2 3</small></a>
         <a class="tile t-words" href="#/words"><span class="big">📝</span><b>Words</b><small>Write names &amp; words</small></a>
+        <a class="tile t-stories" href="#/stories"><span class="big">📖</span><b>Stories</b><small>Funny stories to read</small></a>
       </nav>
     </div>`;
   wireSound();
   $('.t-draw').onclick = () => speak('Draw heroes!');
   $('.t-letters').onclick = () => speak('Letters!');
   $('.t-words').onclick = () => speak('Words!');
+  $('.t-stories').onclick = () => speak('Stories!');
 }
 
 function drawList() {
@@ -506,6 +509,8 @@ function wordPage(raw) {
   });
 }
 
+const reader = createReader({ app, $, esc, topBar, wireSound, drawingThumb, starsBadge, confetti });
+
 // ============================================================ router
 const routes = [
   [/^#?\/?$/, home],
@@ -515,10 +520,14 @@ const routes = [
   [/^#\/letter\/(caps|smalls|nums)\/(.+)$/, (set, ch) => letterPage(set, decodeURIComponent(ch))],
   [/^#\/words$/, () => wordsList(false)],
   [/^#\/word\/(.+)$/, wordPage],
+  [/^#\/stories$/, () => { tracer?.destroy(); tracer = null; reader.storiesList(); }],
+  [/^#\/story\/([\w-]+)\/(\d+)$/, (id, n) => { tracer?.destroy(); tracer = null; reader.storyPage(id, +n); }],
+  [/^#\/story\/([\w-]+)$/, (id) => { tracer?.destroy(); tracer = null; reader.storyPage(id, 0); }],
+  [/^#\/tricky$/, () => { tracer?.destroy(); tracer = null; reader.trickyList(); }],
 ];
 
 function route() {
-  window.speechSynthesis?.cancel();
+  stopSpeaking();
   document.querySelectorAll('.confetti').forEach((c) => c.remove());
   const h = location.hash || '#/';
   for (const [re, fn] of routes) {

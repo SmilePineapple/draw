@@ -284,3 +284,76 @@ button { font: inherit; color: inherit; }
 @media (max-aspect-ratio: 1/1) { .palette { grid-template-columns: repeat(16, 1fr); gap: 5px; } .swatch { border-width: 2px; } }
 .trace.wide .palette { grid-template-columns: repeat(16, 1fr); gap: 6px; }
 .panel.won .palette .swatch { min-height: 0; }
+
+/* ---------- home: four tiles ---------- */
+.tiles { grid-template-columns: repeat(4, 1fr); }
+.t-stories { background: linear-gradient(160deg, #ffb347, #f08a24); }
+@media (max-aspect-ratio: 1/1) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 760px) { .tiles { grid-template-columns: 1fr; } }
+
+/* ---------- stories ---------- */
+.cards.stories { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.story-card-tile { background: linear-gradient(160deg, var(--b1, #fff), var(--b2, #fff)); padding: 12px; }
+.story-card-tile b { font-size: 20px; line-height: 1.15; }
+.story-card-tile small { font-size: 15px; opacity: 0.7; }
+.cover { display: flex; justify-content: center; align-items: flex-end; width: 100%; height: 130px; }
+.cover > div { width: 34%; max-width: 110px; margin: 0 -4px; }
+.cover svg { width: 100%; height: 100%; }
+.cover.big { font-size: 80px; align-items: center; }
+.tricky-tile { background: #fff7d6; }
+.intro { font-size: 22px; font-weight: 800; margin: 12px 8px 18px; }
+.card.tw { min-height: 100px; }
+.card .w2 { font-size: 34px; font-weight: 900; }
+
+.screen.story { background: linear-gradient(160deg, var(--b1), var(--b2)); }
+.screen.story.dark .bar h2, .screen.story.dark .bar { color: #fff; }
+.story-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 4px 18px 18px; animation: pagein 0.35s ease-out; }
+@keyframes pagein { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.scene { position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; background: #fffdf6aa; border-radius: 32px; box-shadow: 0 0 0 6px #fff, 0 12px 30px rgba(43, 43, 58, 0.15); padding: 18px; }
+.actors { display: flex; align-items: flex-end; justify-content: center; gap: 4px; width: 100%; height: 100%; max-height: 70%; }
+.actor { flex: 1 1 0; min-width: 0; max-width: 260px; animation: bob 2.2s ease-in-out infinite; animation-delay: var(--d, 0s); }
+.actor svg { width: 100%; height: auto; display: block; }
+.scene.n1 .actor { max-width: 340px; }
+.scene.n4 .actor, .scene.n5 .actor { max-width: 170px; }
+@keyframes bob { 50% { transform: translateY(-12px) rotate(1.5deg); } }
+.prop { position: absolute; top: 14px; right: 22px; font-size: clamp(54px, 9vw, 110px); animation: bob 1.8s ease-in-out infinite; pointer-events: none; }
+.sfx { position: absolute; left: 16px; bottom: 16px; border: 4px solid #2b2b3a; background: #ffd23f; color: #2b2b3a; font: inherit; font-weight: 900; font-size: clamp(22px, 3.4vw, 36px); padding: 8px 18px; border-radius: 40% 60% 55% 45% / 60% 45% 55% 40%; transform: rotate(-6deg); box-shadow: 0 6px 0 rgba(43, 43, 58, 0.25); touch-action: manipulation; }
+.sfx:active { transform: rotate(-6deg) translateY(4px); }
+.scene.wobble .actors { animation: wobble 0.7s; }
+@keyframes wobble { 20% { transform: rotate(-6deg) scale(1.05); } 40% { transform: rotate(6deg) scale(1.08); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(3deg); } }
+
+.story-card { background: #fff; border-radius: 32px; padding: 22px; display: flex; flex-direction: column; gap: 14px; justify-content: center; box-shadow: 0 8px 0 rgba(43, 43, 58, 0.12); min-height: 0; overflow-y: auto; }
+.story-card.center { align-items: center; text-align: center; }
+.story-title { margin: 0; font-size: clamp(32px, 5vw, 56px); line-height: 1.1; }
+.story-text { margin: 0; font-size: clamp(30px, 4.2vw, 50px); line-height: 1.5; font-weight: 800; }
+.story-text .w { display: inline-block; padding: 0 5px; margin: 0 -1px; border-radius: 14px; cursor: pointer; transition: background 0.12s, transform 0.12s; touch-action: manipulation; }
+.story-text .w:active, .story-text .w.tap { background: #ffe9a8; }
+.story-text .w.now { background: var(--purple); color: #fff; transform: scale(1.08); }
+.story-ctl { display: flex; gap: 12px; align-items: stretch; }
+.story-ctl.col { flex-direction: column; width: 100%; max-width: 440px; }
+.story-ctl .big-btn { width: auto; flex: 1; }
+.story-ctl .round-ish { flex: 0 0 84px; padding: 0; font-size: 28px; }
+.dots { display: flex; gap: 8px; justify-content: center; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; background: #e1e4f3; }
+.dots i.done { background: var(--green); }
+.dots i.now { background: var(--purple); transform: scale(1.3); }
+.hint { margin: 0; text-align: center; font-weight: 800; font-size: 18px; opacity: 0.65; }
+
+.sheet { position: fixed; inset: 0; background: rgba(30, 30, 50, 0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 40; }
+.sheet[hidden] { display: none; }
+.sheet-card { position: relative; background: #fff; width: min(680px, 100%); border-radius: 36px 36px 0 0; padding: 26px 22px calc(26px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 14px; animation: rise 0.25s ease-out; }
+@keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
+.sheet-x { position: absolute; top: 12px; right: 12px; }
+.sheet-pic { font-size: 84px; line-height: 1; }
+.sheet-word { display: flex; gap: 10px; font-size: clamp(54px, 10vw, 92px); font-weight: 900; line-height: 1.1; flex-wrap: wrap; justify-content: center; }
+.syl { padding: 0 12px; border-radius: 18px; background: #f1edff; color: var(--purple); transition: all 0.15s; }
+.syl.on { background: var(--purple); color: #fff; transform: scale(1.12); }
+.sheet-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+
+@media (max-aspect-ratio: 1/1) {
+  .story-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 0.9fr) auto; }
+  .story-text { font-size: clamp(28px, 5.4vw, 44px); }
+}
+@media (prefers-reduced-motion: reduce) { .actor, .prop, .story-main { animation: none; } }
+.story-text .nb { white-space: nowrap; }
+.scene { background: #fffdf6; }

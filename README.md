@@ -5,6 +5,7 @@ A tiny, no-build web app for little kids (made for a 4- and 5-year-old on iPads)
 - **Draw Heroes** – step-by-step drawings (Marvel, Bluey, Star Wars, PJ Masks + easy shapes). One step at a time: trace the glowing guide with a finger, colour fades in, next step appears.
 - **Letters** – A–Z, a–z and 0–9 with numbered strokes and a green start dot.
 - **Words** – hero words, plus grown-ups can add the kids' names ("➕ Add a word").
+- **Stories** – six silly original stories starring the characters. "Read it to me" reads a whole story (words light up as they're read, pages turn by themselves); or the child reads on their own and **taps any tricky word** to hear it, see it split into syllables, "sound it out", or jump to **Write it**. Tapped words collect in **My tricky words**.
 - **Screen / Paper toggle** on every drawing, letter and word: in *Paper* mode the screen shows the model one step at a time and the child draws or writes it on real paper, then taps "Done! Next step". The 🖨️ button prints a worksheet (dotted letters/words to trace with a pencil, or a step-by-step drawing guide).
 - 16 pen colours including white, and a **Next word** button.
 - Instructions are **read aloud** (iPad voice), with sound effects, stars, confetti and "Save picture".
@@ -25,6 +26,10 @@ Import the repo in Vercel. Framework preset: **Other**, no build command, no out
 (the project root is served as-is). Or from the CLI: `npx vercel --prod`.
 
 On the iPad: open the site in Safari → Share → **Add to Home Screen** for a full-screen app icon.
+
+## Adding more stories
+
+Add an entry to `STORIES` in `src/stories.js`: each page has `text`, `art` (drawing ids from `src/drawings.js`), optional `props` (emoji) and `sfx` (a tappable sound-effect sticker). Add oddly-spelled words to `HYPHENS` if the syllable splitter gets them wrong.
 
 ## Adding more drawings
 

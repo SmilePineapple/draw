@@ -77,15 +77,85 @@ function pickVoice() {
 }
 window.speechSynthesis?.addEventListener?.('voiceschanged', () => { voice = null; });
 
-export function speak(text) {
+const makeUtterance = (text, { rate = 0.85, pitch = 1.15 } = {}) => {
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = rate;
+  u.pitch = pitch;
+  const v = pickVoice();
+  if (v) u.voice = v;
+  return u;
+};
+
+let token = 0; // bumps whenever speech is cancelled so old callbacks go quiet
+
+export function stopSpeaking() {
+  token++;
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+}
+
+export function speak(text, opts) {
   if (!prefs.sound || !text || !window.speechSynthesis) return;
   try {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.85;
-    u.pitch = 1.15;
-    const v = pickVoice();
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
+    stopSpeaking();
+    window.speechSynthesis.speak(makeUtterance(text, opts));
   } catch { /* ignore */ }
+}
+
+/**
+ * Read text aloud and report which word is being spoken (for highlighting).
+ * iPad Safari doesn't always send word boundaries, so we fall back to estimated timing.
+ * `starts` = character offset where each word begins.
+ */
+export function speakSync(text, { rate = 0.8, starts = [], onWord, onEnd } = {}) {
+  if (!window.speechSynthesis) { onEnd?.(); return; }
+  stopSpeaking();
+  const mine = token;
+  let gotBoundary = false;
+  let finished = false;
+  const timers = [];
+  const finish = () => {
+    if (finished || mine !== token) return;
+    finished = true;
+    timers.forEach(clearTimeout);
+    onEnd?.();
+  };
+  const u = makeUtterance(text, { rate });
+  u.onboundary = (e) => {
+    if (mine !== token || (e.name && e.name !== 'word')) return;
+    gotBoundary = true;
+    let idx = 0;
+    starts.forEach((st, i) => { if (st <= e.charIndex) idx = i; });
+    onWord?.(idx);
+  };
+  u.onend = finish;
+  u.onerror = finish;
+  timers.push(setTimeout(() => {
+    if (gotBoundary || mine !== token || finished) return;
+    let t = 0;
+    starts.forEach((st, i) => {
+      const next = starts[i + 1] ?? text.length;
+      timers.push(setTimeout(() => { if (mine === token && !finished) onWord?.(i); }, t));
+      t += ((next - st) * 62 + 130) / rate / 0.8;
+    });
+  }, 700));
+  window.speechSynthesis.speak(u);
+}
+
+/** Say several chunks one after another with a small gap (used for "sound it out"). */
+export function speakSeq(parts, { rate = 0.6, gap = 420, onEach, onEnd } = {}) {
+  if (!window.speechSynthesis) { onEnd?.(); return; }
+  stopSpeaking();
+  const mine = token;
+  let i = 0;
+  const next = () => {
+    if (mine !== token) return;
+    if (i >= parts.length) { onEnd?.(); return; }
+    const idx = i++;
+    onEach?.(idx);
+    const u = makeUtterance(parts[idx], { rate, pitch: 1.1 });
+    u.onend = () => setTimeout(next, gap);
+    u.onerror = () => setTimeout(next, gap);
+    window.speechSynthesis.speak(u);
+  };
+  next();
 }
