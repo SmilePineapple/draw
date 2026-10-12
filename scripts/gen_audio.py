@@ -18,6 +18,9 @@ from pathlib import Path
 
 try:
     import edge_tts
+    import edge_tts.communicate as _comm
+    import edge_tts.constants as _const
+    import edge_tts.voices as _voices
 except ImportError:
     print("edge-tts is not installed (pip install edge-tts) - skipping voice clips")
     sys.exit(0)
@@ -28,6 +31,39 @@ VOICE = os.environ.get("TTS_VOICE", "en-GB-SoniaNeural")  # British English, fem
 RATE = os.environ.get("TTS_RATE", "-8%")                  # a touch slower for little listeners
 CONCURRENCY = int(os.environ.get("TTS_CONCURRENCY", "6"))
 TOKEN = re.compile(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*")
+
+
+def set_edge_version(full: str) -> None:
+    """Make edge-tts present a different Edge/Chromium version.
+
+    Microsoft's service answers 403 to clients that look too old, and edge-tts bakes in the version it was released
+    with, so on a stale release we retry with newer version numbers.
+    """
+    major = full.split(".")[0]
+    for mod in (_const, _comm, _voices):
+        if hasattr(mod, "SEC_MS_GEC_VERSION"):
+            mod.SEC_MS_GEC_VERSION = f"1-{full}"
+    for hdr in (_const.BASE_HEADERS, _const.WSS_HEADERS, _const.VOICE_HEADERS):
+        if "User-Agent" in hdr:
+            hdr["User-Agent"] = re.sub(r"(Chrome|Edg)/\d+\.0\.0\.0", rf"\1/{major}.0.0.0", hdr["User-Agent"])
+        if "Sec-CH-UA" in hdr:
+            hdr["Sec-CH-UA"] = re.sub(r'v="\d+"', f'v="{major}"', hdr["Sec-CH-UA"]).replace('"Not;A Brand";v="' + major + '"', '"Not;A Brand";v="99"')
+
+
+async def connect() -> bool:
+    """True once the voice service accepts us (trying newer client versions if it answers 403)."""
+    last = None
+    for full in [None] + [f"{m}.0.0.0" for m in range(144, 171)]:
+        if full:
+            set_edge_version(full)
+        try:
+            await record("Hello", False)
+            print(f"Edge TTS reachable{f' (as Edge {full})' if full else ''}")
+            return True
+        except Exception as e:  # noqa: BLE001
+            last = e
+    print(f"Edge TTS is not reachable from here ({last}) - the device voice will be used instead")
+    return False
 
 
 def filename(key: str) -> str:
@@ -134,11 +170,7 @@ async def main():
             print(f"  could not record {it['text'][:40]!r}: {last}")
 
     if todo:
-        # if the very first request fails the service is unreachable - don't wait on every phrase
-        try:
-            await record("Hello", False)
-        except Exception as e:  # noqa: BLE001
-            print(f"Edge TTS is not reachable from here ({e}) - the device voice will be used instead")
+        if not await connect():
             if not clips:
                 return
             todo = []

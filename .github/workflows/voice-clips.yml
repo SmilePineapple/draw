@@ -27,6 +27,12 @@ jobs:
       - run: pip install edge-tts
       - run: node scripts/audio-texts.mjs
       - run: python scripts/gen_audio.py
+      - name: Fail loudly if nothing was recorded
+        run: |
+          if [ ! -s audio/index.json ]; then
+            echo "::error::No voice clips were recorded (the voice service refused the request). The app will use the device voice."
+            exit 1
+          fi
       - name: Commit new clips
         run: |
           git config user.name "github-actions[bot]"
