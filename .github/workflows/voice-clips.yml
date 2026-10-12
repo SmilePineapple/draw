@@ -3,12 +3,7 @@
 name: Voice clips
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'src/**'
-      - 'scripts/audio-texts.mjs'
-      - 'scripts/gen_audio.py'
+  workflow_dispatch:   # manual only: Microsoft currently refuses requests from GitHub's servers (403)
 
 permissions:
   contents: write
