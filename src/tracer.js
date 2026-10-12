@@ -100,6 +100,7 @@ export function createTracer(o) {
   let active = null; // {id, stroke}
   let advanceTimer = 0;
   let destroyed = false;
+  let paper = false; // pencil-and-paper mode: show the model, no on-screen tracing
 
   const ctx = canvas.getContext('2d');
   let scale = 1; // css px per viewBox unit
@@ -134,9 +135,16 @@ export function createTracer(o) {
   // ---------- canvas drawing ----------
   function paintStroke(c, s, k) {
     const pts = s.pts;
+    c.lineCap = c.lineJoin = 'round';
+    const white = s.color.toLowerCase() === '#ffffff';
+    if (white) {
+      // thin grey edge so a white pen is visible on the cream page
+      c.strokeStyle = c.fillStyle = '#cdd2de';
+      c.lineWidth = (cfg.ink + 2.4) * k;
+      outline(c, pts, k, cfg.ink + 2.4);
+    }
     c.strokeStyle = c.fillStyle = s.color;
     c.lineWidth = cfg.ink * k;
-    c.lineCap = c.lineJoin = 'round';
     if (pts.length === 1) {
       c.beginPath();
       c.arc(pts[0].x * k, pts[0].y * k, (cfg.ink * k) / 2, 0, Math.PI * 2);
@@ -154,6 +162,20 @@ export function createTracer(o) {
     c.lineTo(last.x * k, last.y * k);
     c.stroke();
   }
+  function outline(c, pts, k, w) {
+    if (pts.length === 1) {
+      c.beginPath(); c.arc(pts[0].x * k, pts[0].y * k, (w * k) / 2, 0, Math.PI * 2); c.fill();
+      return;
+    }
+    c.beginPath();
+    c.moveTo(pts[0].x * k, pts[0].y * k);
+    for (let i = 1; i < pts.length - 1; i++) {
+      c.quadraticCurveTo(pts[i].x * k, pts[i].y * k, ((pts[i].x + pts[i + 1].x) / 2) * k, ((pts[i].y + pts[i + 1].y) / 2) * k);
+    }
+    const l = pts[pts.length - 1];
+    c.lineTo(l.x * k, l.y * k);
+    c.stroke();
+  }
   function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     strokes.forEach((s) => paintStroke(ctx, s, scale));
@@ -169,6 +191,13 @@ export function createTracer(o) {
   function renderGuide() {
     gCur.replaceChildren();
     steps.forEach((s, i) => s.ghostEls.forEach((g) => g.classList.toggle('hide', finished || i <= idx)));
+    if (paper) {
+      steps.forEach((st, i) => {
+        if (i < idx || finished) {
+          st.paths.forEach((p) => el('path', { d: p.d, transform: `translate(${p.dx} ${p.dy})`, class: 'paper-done' }, gCur));
+        }
+      });
+    }
     if (finished) return;
     const s = steps[idx];
     const w = cfg.guideW;
@@ -271,7 +300,7 @@ export function createTracer(o) {
 
   function completeStep(skipped = false) {
     clearTimeout(advanceTimer);
-    revealFill(idx);
+    if (!paper) revealFill(idx);
     const pts = stepPoints(idx);
     const last = pts[pts.length - 1] || steps[idx].samples[0][0];
     if (!skipped) { ding(); sparkle(last.x, last.y); }
@@ -282,6 +311,7 @@ export function createTracer(o) {
       gCur.classList.remove('ok');
       if (done + 1 >= steps.length) {
         finished = true;
+        if (paper) fillEls.forEach((g) => g.classList.add('on'));
         showStep();
         o.onComplete?.();
       } else {
@@ -298,7 +328,7 @@ export function createTracer(o) {
   };
 
   canvas.addEventListener('pointerdown', (e) => {
-    if (active || destroyed) return;
+    if (active || destroyed || paper) return;
     if (!finished && advanceTimer && gCur.classList.contains('ok')) return; // celebrating
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
@@ -332,6 +362,12 @@ export function createTracer(o) {
     get finished() { return finished; },
     get step() { return steps[Math.min(idx, steps.length - 1)]; },
     setColor(c) { color = c; },
+    setPaper(on) {
+      paper = on;
+      canvas.style.pointerEvents = on ? 'none' : '';
+      stage.classList.toggle('paper', on);
+      api.restart();
+    },
     /** wipe what was drawn for the current step */
     clearStep() {
       strokes = strokes.filter((s) => s.step !== (finished ? -1 : idx));

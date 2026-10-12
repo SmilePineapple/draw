@@ -16,7 +16,8 @@ const $ = (sel, root = app) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ============================================================ helpers
-const PALETTE = ['auto', '#222222', '#e53935', '#fb8c00', '#f9d71c', '#43a047', '#1e88e5', '#8e24aa', '#ec407a', '#8d5524'];
+const PALETTE = ['auto', '#ffffff', '#222222', '#e53935', '#fb8c00', '#f9d71c', '#a3d63a', '#43a047',
+  '#12b5b0', '#1e88e5', '#283593', '#8e24aa', '#ec407a', '#8d5524', '#9e9e9e', '#f4c9a0'];
 
 function topBar({ back, title, right = '' }) {
   return `
@@ -78,13 +79,15 @@ function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, hea
   const wide = vbW / vbH > 2.4;
   app.innerHTML = `
     <div class="screen trace ${wide ? 'wide' : ''} ${mode}">
-      ${topBar({ back, title, right: headerExtra })}
+      ${topBar({ back, title, right: `${headerExtra}<div class="seg" id="seg" role="group" aria-label="Where to draw"><button data-m="screen">✏️ Screen</button><button data-m="paper">📄 Paper</button></div><button class="btn round" id="print" aria-label="Print a worksheet">🖨️</button>` })}
       <main class="trace-main">
         <div class="stage-host" id="host"></div>
         <aside class="panel" id="panel">
           <div class="panel-top">${panelTop}</div>
           <div class="progress" id="progress"></div>
+          <div class="paper-banner">📄 Draw it on your paper!</div>
           <p class="say" id="say"></p>
+          <button class="btn big-btn paper-next" id="paperNext">✅ Done! Next step</button>
           <div class="tools" id="tools">
             <button class="btn tool" id="hear"><span>🔊</span>Hear it</button>
             <button class="btn tool" id="hint"><span>👀</span>Show me</button>
@@ -136,6 +139,10 @@ function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, hea
     const w = $('#win');
     w.hidden = false;
     w.innerHTML = winHtml();
+    if (paperOn) {
+      w.querySelector('[data-act="save"]')?.remove();
+      w.querySelector('h3')?.insertAdjacentHTML('afterend', '<p>🖍️ Now colour yours in with your crayons!</p>');
+    }
     w.querySelector('[data-act="again"]')?.addEventListener('click', () => resetUi());
     w.querySelector('[data-act="save"]')?.addEventListener('click', savePicture);
     speak(winSay || 'Great job! You did it!');
@@ -161,6 +168,26 @@ function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, hea
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
 
+  let paperOn = store.get('paper', false);
+  const panelEl = $('#panel');
+  function applyMode(on, first = false) {
+    paperOn = on;
+    store.set('paper', on);
+    panelEl.classList.toggle('paper-on', on);
+    app.querySelectorAll('#seg button').forEach((b) => b.classList.toggle('on', (b.dataset.m === 'paper') === on));
+    if (!first) {
+      $('#win').hidden = true; panelEl.classList.remove('won'); sayEl.hidden = false; $('#tools').hidden = false;
+    }
+    t.setPaper(on);
+  }
+  $('#seg').onclick = (e) => {
+    const b = e.target.closest('button');
+    if (b) applyMode(b.dataset.m === 'paper');
+  };
+  $('#paperNext').onclick = () => t.skip();
+  $('#print').onclick = () => printSheet({ title, vbW, vbH, steps, mode, backdrop });
+  applyMode(paperOn, true);
+
   $('#hear').onclick = () => speak(lastSay);
   $('#hint').onclick = () => { t.hint(); };
   $('#again').onclick = () => t.clearStep();
@@ -180,6 +207,39 @@ function traceScreen({ back, title, vbW, vbH, steps, mode, backdrop, sayFor, hea
   };
 
   return { tracer: t, setStepUi: (fn) => { onStepUi = fn; }, showWin };
+}
+
+
+// ============================================================ printable worksheets
+function printSheet({ title, vbW, vbH, steps, mode, backdrop }) {
+  const norm = (p) => (typeof p === 'string' ? { d: p, dx: 0, dy: 0 } : { dx: 0, dy: 0, ...p });
+  const paths = (st, cls) => st.paths.map(norm).map((p) => `<path d="${p.d}" transform="translate(${p.dx} ${p.dy})" class="${cls}"/>`).join('');
+  let html = `<h1>✏️ ${esc(title)}</h1>`;
+  if (mode === 'write') {
+    const narrow = vbW / vbH < 2;
+    const startDots = (numbered) => steps.map((st) => {
+      const p = norm(st.paths[0]);
+      const m = p.d.match(/^M\s*(-?[\d.]+)[ ,]\s*(-?[\d.]+)/);
+      if (!m) return '';
+      const x = +m[1] + p.dx; const y = +m[2] + p.dy;
+      return `<circle cx="${x}" cy="${y}" r="7" class="pr-start"/>${numbered && st.strokeCount > 1 ? `<text x="${x}" y="${y + 4}" text-anchor="middle" class="pr-num">${st.strokeIndex + 1}</text>` : ''}`;
+    }).join('');
+    const row = (dotted) => `<svg viewBox="0 0 ${vbW} ${vbH}" class="pr-row ${narrow ? 'narrow' : ''}">${backdrop || ''}${steps.map((st) => paths(st, dotted ? 'pr-dots' : 'pr-model')).join('')}${startDots(!dotted)}</svg>`;
+    const n = narrow ? 11 : 5;
+    html += '<p>Look at the first one, then trace the dots with your pencil. Start at the green dots!</p>';
+    html += row(false) + Array.from({ length: n }, () => row(true)).join('');
+  } else {
+    html += '<p>Draw one step at a time. The <b>thick</b> line is the new part!</p><div class="pr-grid">';
+    steps.forEach((st, i) => {
+      const before = steps.slice(0, i).map((s2) => paths(s2, 'pr-done')).join('');
+      html += `<figure><svg viewBox="0 0 400 400">${before}${paths(st, 'pr-cur')}</svg><figcaption><b>${i + 1}.</b> ${esc(st.say || '')}</figcaption></figure>`;
+    });
+    html += '</div>';
+  }
+  let box = document.getElementById('print-area');
+  if (!box) { box = document.createElement('div'); box.id = 'print-area'; document.body.appendChild(box); }
+  box.innerHTML = html;
+  setTimeout(() => window.print(), 50);
 }
 
 // ============================================================ screens
@@ -402,10 +462,15 @@ function wordPage(raw) {
   const lay = layoutText(text);
   if (!lay.steps.length) return (location.hash = '#/words');
   const emoji = (DEFAULT_WORDS.find(([w]) => w.toLowerCase() === word.toLowerCase()) || [])[1] || '';
+  const order = [...getCustom(), ...DEFAULT_WORDS.map(([w]) => w)];
+  const pos = order.findIndex((w) => w.toLowerCase() === word.toLowerCase());
+  const nextWord = order[(pos + 1) % order.length];
+  const prevWord = order[(pos - 1 + order.length) % order.length];
   const letters = [...text];
   traceScreen({
     back: '#/words', title: text,
     vbW: lay.vbW, vbH: lay.vbH, steps: lay.steps, backdrop: lay.backdrop, mode: 'write',
+    headerExtra: `<a class="btn round" href="#/word/${encodeURIComponent(prevWord)}" aria-label="Previous word">◀</a><a class="btn round" href="#/word/${encodeURIComponent(nextWord)}" aria-label="Next word">▶</a>`,
     panelTop: `<div class="word-card" id="wordcard">${letters.map((l, k) => `<span data-k="${k}">${esc(l)}</span>`).join('')}${emoji ? `<em>${emoji}</em>` : ''}</div>`,
     sayFor(k, step) {
       const spans = app.querySelectorAll('#wordcard span');
@@ -429,9 +494,10 @@ function wordPage(raw) {
           <div class="win-emoji">${emoji || '🎉'}</div>
           <h3>You wrote ${esc(text)}!</h3>
           <div class="win-actions">
+            <a class="btn big-btn next" href="#/word/${encodeURIComponent(nextWord)}">➡ Next word: ${esc(styled(nextWord))}</a>
             <button class="btn big-btn" data-act="save">💾 Save picture</button>
             <button class="btn big-btn alt" data-act="again">🔁 Again</button>
-            <a class="btn big-btn alt" href="#/words">📝 More words</a>
+            <a class="btn big-btn alt" href="#/words">📝 All words</a>
           </div>
         </div>`;
     },

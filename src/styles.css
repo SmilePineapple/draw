@@ -227,3 +227,60 @@ button { font: inherit; color: inherit; }
 .panel.won .big-btn { min-height: 58px; font-size: 20px; }
 .panel.won .palette { margin-top: 4px; }
 .panel.won .palette .swatch { min-height: 34px; }
+
+/* ---------- bigger palette ---------- */
+.palette { grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.swatch[data-c="#ffffff"] { box-shadow: 0 0 0 3px #aeb4c9; }
+.swatch[data-c="#ffffff"].sel { box-shadow: 0 0 0 5px var(--purple); }
+@media (max-aspect-ratio: 1/1) { .palette { grid-template-columns: repeat(16, 1fr); gap: 5px; } .swatch { border-width: 2px; min-height: 30px; } }
+.trace.wide .palette { grid-template-columns: repeat(16, 1fr); gap: 6px; }
+.trace.wide .swatch { min-height: 34px; border-width: 3px; }
+
+/* ---------- pencil & paper mode ---------- */
+.seg { display: flex; background: #fff; border-radius: 999px; padding: 4px; box-shadow: 0 4px 0 rgba(43, 43, 58, 0.14); }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 10px 14px; font-weight: 900; font-size: 16px; touch-action: manipulation; }
+.seg button.on { background: var(--purple); color: #fff; }
+.paper-banner, .paper-next { display: none; }
+.paper-on .paper-banner { display: block; text-align: center; font-weight: 900; font-size: 20px; color: #b25e00; background: #fff1d6; border-radius: 16px; padding: 8px; }
+.paper-on .paper-next { display: flex; min-height: 76px; font-size: 24px; }
+.paper-on .palette, .paper-on #again, .paper-on #skip { display: none; }
+.paper-on .tools { grid-template-columns: repeat(3, 1fr); }
+.paper-done { fill: none; stroke: #2b2b3a; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.mode-write .paper-done { stroke-width: 9; }
+.stage.paper { box-shadow: 0 0 0 6px #fff1d6, 0 12px 30px rgba(43, 43, 58, 0.18); }
+.stage.paper canvas { cursor: default; }
+.paper .cur-demo { animation: demo 2.6s ease-in-out infinite; }
+@media (max-width: 900px) { .seg button { padding: 8px 10px; font-size: 14px; } }
+
+/* ---------- printable worksheets ---------- */
+#print-area { display: none; }
+@media print {
+  html, body { overflow: visible !important; height: auto !important; background: #fff !important; }
+  #app { display: none !important; }
+  #print-area { display: block; position: static; font-family: var(--font); color: #222; }
+  @page { margin: 12mm; }
+  #print-area h1 { margin: 0 0 4mm; font-size: 26pt; }
+  #print-area p { margin: 0 0 5mm; font-size: 13pt; }
+  .pr-row { width: 100%; display: block; margin-bottom: 4mm; break-inside: avoid; }
+  .pr-row.narrow { width: 31%; display: inline-block; margin-right: 1%; }
+  .pr-model { fill: none; stroke: #bbb; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+  .pr-dots { fill: none; stroke: #444; stroke-width: 3.2; stroke-dasharray: 0.1 7; stroke-linecap: round; stroke-linejoin: round; }
+  .pr-start { fill: #2ecc71; stroke: #fff; stroke-width: 1.5; }
+  .pr-num { fill: #fff; font-size: 9px; font-weight: 900; font-family: var(--font); }
+  .pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .pr-grid figure { margin: 0; break-inside: avoid; border: 1.5px solid #bbb; border-radius: 4mm; padding: 3mm; }
+  .pr-grid svg { width: 100%; }
+  .pr-grid figcaption { font-size: 13pt; text-align: center; margin-top: 2mm; }
+  .pr-done { fill: none; stroke: #999; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .pr-cur { fill: none; stroke: #e53935; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+}
+
+.panel.won .paper-banner, .panel.won .paper-next { display: none !important; }
+@media print { .confetti, .spark { display: none !important; } }
+
+/* palette sizing fix: 16 swatches, finger-sized, never wider than the panel */
+.palette { grid-template-columns: repeat(6, 1fr); gap: 9px; }
+.swatch { min-height: 0; width: 100%; border-width: 3px; }
+@media (max-aspect-ratio: 1/1) { .palette { grid-template-columns: repeat(16, 1fr); gap: 5px; } .swatch { border-width: 2px; } }
+.trace.wide .palette { grid-template-columns: repeat(16, 1fr); gap: 6px; }
+.panel.won .palette .swatch { min-height: 0; }

@@ -5,6 +5,8 @@ A tiny, no-build web app for little kids (made for a 4- and 5-year-old on iPads)
 - **Draw Heroes** – step-by-step drawings (Marvel, Bluey, Star Wars, PJ Masks + easy shapes). One step at a time: trace the glowing guide with a finger, colour fades in, next step appears.
 - **Letters** – A–Z, a–z and 0–9 with numbered strokes and a green start dot.
 - **Words** – hero words, plus grown-ups can add the kids' names ("➕ Add a word").
+- **Screen / Paper toggle** on every drawing, letter and word: in *Paper* mode the screen shows the model one step at a time and the child draws or writes it on real paper, then taps "Done! Next step". The 🖨️ button prints a worksheet (dotted letters/words to trace with a pencil, or a step-by-step drawing guide).
+- 16 pen colours including white, and a **Next word** button.
 - Instructions are **read aloud** (iPad voice), with sound effects, stars, confetti and "Save picture".
 - Works with finger or Apple Pencil, portrait or landscape. Progress (stars, ⭐ badges, custom words) is stored on the device only.
 
