@@ -6,24 +6,16 @@
 //   z     – paint order of the fill (default: step order). Use negative to tuck behind earlier shapes.
 // These are simple, original, hand-built vector sketches inspired by the characters.
 
-const c = (cx, cy, r) => `M${cx} ${cy - r}a${r} ${r} 0 1 0 0 ${2 * r}a${r} ${r} 0 1 0 0 ${-2 * r}z`;
-const e = (cx, cy, rx, ry) => `M${cx} ${cy - ry}a${rx} ${ry} 0 1 0 0 ${2 * ry}a${rx} ${ry} 0 1 0 0 ${-2 * ry}z`;
-const rect = (x, y, w, h) => `M${x} ${y}h${w}v${h}h${-w}z`;
-const star = (cx, cy, R, r) => {
-  const pts = [];
-  for (let i = 0; i < 10; i++) {
-    const a = (-90 + i * 36) * (Math.PI / 180);
-    const rad = i % 2 ? r : R;
-    pts.push(`${(cx + rad * Math.cos(a)).toFixed(1)} ${(cy + rad * Math.sin(a)).toFixed(1)}`);
-  }
-  return `M${pts.join('L')}Z`;
-};
+import { c, e, rect, star } from './shapes.js';
+import { MORE } from './drawings_more.js';
 
 export const GROUPS = [
   { id: 'marvel', name: 'Marvel Heroes', color: '#e23636', bg: '#ffe3e3', emoji: '🦸' },
   { id: 'bluey', name: 'Bluey', color: '#3b8fd9', bg: '#dff0ff', emoji: '🐾' },
   { id: 'starwars', name: 'Star Wars', color: '#2b2f4a', bg: '#e3e6ff', emoji: '✨' },
   { id: 'pjmasks', name: 'PJ Masks', color: '#7a3fd1', bg: '#efe3ff', emoji: '🌙' },
+  { id: 'animals', name: 'Cute Animals', color: '#e8590c', bg: '#fff0e0', emoji: '🐾' },
+  { id: 'things', name: 'Fun Things', color: '#0b7285', bg: '#d9f5f8', emoji: '🚀' },
   { id: 'easy', name: 'Easy Peasy', color: '#18a35a', bg: '#dcf8e6', emoji: '🌈' },
 ];
 
@@ -62,6 +54,7 @@ function pjHero({ id, title, cowl, ears, nose, skin = '#f1c9a5', extra = [] }) {
 // ---------- the drawings ----------
 
 export const DRAWINGS = [
+  ...MORE,
   // ===== Marvel =====
   {
     id: 'spidey', title: 'Spidey', group: 'marvel',
