@@ -75,15 +75,15 @@ export const STORIES = [
     ],
   },
   {
-    id: 'mud', title: 'Muffin and the Mud Puddle', bg: ['#e9f7ff', '#e4ffe0'], cover: ['muffin', 'socks'],
+    id: 'mud', title: 'Bluey, Bingo and the Mud Puddle', bg: ['#e9f7ff', '#e4ffe0'], cover: ['bluey', 'bingo'],
     pages: [
-      { art: ['muffin', 'socks'], props: '🌧️', text: 'It had rained all day. Muffin and Socks saw a big mud puddle.', sfx: 'Splish!' },
-      { art: ['chilli', 'muffin'], text: '"Do not jump in it," said Auntie Chilli. Muffin looked at the puddle. The puddle looked at Muffin.' },
-      { art: ['socks'], text: 'Socks put one toe in. Then two toes. Then she tripped!', sfx: 'Whoops!' },
-      { art: ['socks'], props: '💦', text: 'SPLASH! Socks was a mud monster. "Rawr!" she said.', sfx: 'Splash!' },
-      { art: ['muffin', 'socks'], text: 'Muffin laughed so hard that she fell in too. Now there were two mud monsters.', sfx: 'Hee hee!' },
-      { art: ['chilli'], props: '🛁', text: 'Auntie Chilli looked at the two monsters. "Bath time," she said, and she smiled.' },
-      { art: ['muffin', 'socks', 'chilli'], props: '🧼', text: 'The bath was full of bubbles. Muffin and Socks looked like two fluffy clouds.', sfx: 'Bubble pop!' },
+      { art: ['bluey', 'bingo'], props: '🌧️', text: 'It had rained all day. Bluey and Bingo saw a big mud puddle.', sfx: 'Splish!' },
+      { art: ['chilli', 'bluey'], text: '"Do not jump in it," said Mum. Bluey looked at the puddle. The puddle looked at Bluey.' },
+      { art: ['bingo'], text: 'Bingo put one toe in. Then two toes. Then she tripped!', sfx: 'Whoops!' },
+      { art: ['bingo'], props: '💦', text: 'SPLASH! Bingo was a mud monster. "Rawr!" she said.', sfx: 'Splash!' },
+      { art: ['bluey', 'bingo'], text: 'Bluey laughed so hard that she fell in too. Now there were two mud monsters.', sfx: 'Hee hee!' },
+      { art: ['chilli'], props: '🛁', text: 'Mum looked at the two monsters. "Bath time," she said, and she smiled.' },
+      { art: ['bluey', 'bingo', 'chilli'], props: '🧼', text: 'The bath was full of bubbles. Bluey and Bingo looked like two fluffy clouds.', sfx: 'Bubble pop!' },
     ],
   },
   {

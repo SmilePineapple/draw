@@ -12,7 +12,7 @@ A tiny, no-build web app for little kids (made for a 4- and 5-year-old on iPads)
 - **Players** – a profile per child ("Who's playing?"); stars, stickers, progress and settings are saved separately. The **🔒 Grown-ups** page (behind a small sum) shows letters, drawings, stories, words, tricky words, games and a 14-day activity chart for each child, plus reset/rename/remove.
 - **Works offline** – a service worker saves the app on the device after the first visit.
 - 16 pen colours including white, and a **Next word** button.
-- Instructions and stories are **read aloud by a British female narrator** (Microsoft Edge neural voice *Sonia*, recorded ahead of time — see *Voice* below), with word-by-word highlighting; the iPad's own British voice is the fallback, with sound effects, stars, confetti and "Save picture".
+- Instructions and stories are **read aloud by a British female narrator** (recorded ahead of time — see *Voice* below), with word-by-word highlighting; the iPad's own British voice is the fallback, with sound effects, stars, confetti and "Save picture".
 - Works with finger or Apple Pencil, portrait or landscape. Progress (stars, ⭐ badges, custom words) is stored on the device only.
 
 No dependencies, no build step — just static files.
@@ -33,13 +33,17 @@ On the iPad: open the site in Safari → Share → **Add to Home Screen** for a 
 
 ## Voice (British female narrator)
 
-The app plays pre-recorded clips from `audio/` (voice: `en-GB-SoniaNeural` via the free `edge-tts` package) and falls back to
-the device's own voice for anything without a clip (e.g. a name a grown-up typed in).
+The app plays pre-recorded clips from `audio/` (a British English female voice) and falls back to the device's own voice for
+anything without a clip (e.g. a name a grown-up typed in).
 
 - `node scripts/audio-texts.mjs` lists every phrase the app can say (`audio/texts.json`).
-- `python3 scripts/gen_audio.py` records them (`pip install edge-tts` first) → `audio/*.mp3` + `audio/index.json`. Re-runs only record new phrases.
-- The **Voice clips** GitHub Action (`.github/workflows/voice-clips.yml`) does this automatically whenever `src/` changes and commits the clips, so the next deploy has them. Run it by hand from the Actions tab if needed.
-- Change voice with `TTS_VOICE=en-GB-LibbyNeural` (or `en-GB-MaisieNeural`, a younger voice) and re-run.
+- `python3 scripts/gen_audio.py` records them → `audio/*.mp3` + `audio/index.json`. Re-runs only record new phrases.
+  Default engine is **Piper** (`pip install piper-tts numpy`, needs ffmpeg), voice `en_GB-cori-medium`
+  (try `TTS_VOICE=en_GB-jenny_dioco-medium` or `en_GB-alba-medium`).
+- The **Voice clips** GitHub Action (`.github/workflows/voice-clips.yml`) does this automatically whenever `src/` changes and
+  commits the clips, so the next deploy has them. Run it by hand from the Actions tab if needed.
+- Microsoft's Edge voices (`TTS_ENGINE=edge TTS_VOICE=en-GB-SoniaNeural`, `pip install edge-tts`) also work, but Microsoft
+  refuses requests from cloud servers like GitHub's, so run that one on your own computer.
 - The Grown-ups page has **Save voices for offline** to cache every clip on the iPad.
 
 ## Offline support
