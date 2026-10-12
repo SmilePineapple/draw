@@ -21,7 +21,7 @@ concurrency:
 jobs:
   voice:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,9 +36,12 @@ jobs:
       - run: ffmpeg -version | head -1
       - run: node scripts/audio-texts.mjs
       - run: python scripts/gen_audio.py
+        timeout-minutes: 70
         env:
           TTS_ENGINE: piper
+          TTS_BUDGET_MIN: '55'   # keeps what it has when time is up; run again to finish the rest
       - name: Fail loudly if nothing was recorded
+        if: always()
         run: |
           if [ ! -s audio/index.json ]; then
             echo "::error::No voice clips were recorded. The app will use the device voice."
@@ -47,6 +50,7 @@ jobs:
           ls audio | wc -l
           du -sh audio
       - name: Commit new clips
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

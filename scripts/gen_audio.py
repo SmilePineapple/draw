@@ -22,7 +22,9 @@ import os
 import re
 import subprocess
 import sys
+import time
 import wave
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,6 +35,7 @@ PIPER_VOICES = ["en_GB-cori-medium", "en_GB-jenny_dioco-medium", "en_GB-alba-med
 VOICE = os.environ.get("TTS_VOICE") or ("en-GB-SoniaNeural" if ENGINE == "edge" else PIPER_VOICES[0])
 LENGTH_SCALE = float(os.environ.get("TTS_LENGTH_SCALE", "1.12"))  # Piper: >1 = slower, a touch calmer for little listeners
 EDGE_RATE = os.environ.get("TTS_RATE", "-8%")
+BUDGET_MIN = float(os.environ.get("TTS_BUDGET_MIN", "40"))  # stop starting new clips after this long; the next run carries on
 
 
 def filename(key: str) -> str:
@@ -111,7 +114,7 @@ class Piper:
         globals()["VOICE"] = self.name  # the voice that actually loaded (used in clip file names)
         print(f"Piper voice: {self.name}")
 
-    async def record(self, text: str, want_words: bool):
+    def record_sync(self, text: str, want_words: bool):
         buf = io.BytesIO()
         with wave.open(buf, "wb") as w:
             self.voice.synthesize_wav(text, w, syn_config=self.cfg)
@@ -181,7 +184,7 @@ class Edge:
 
 
 class Stub:  # for testing the pipeline without a voice
-    async def record(self, text: str, want_words: bool):
+    def record_sync(self, text: str, want_words: bool):
         import numpy as np
 
         rate, secs = 22050, 0.12 * max(1, len(text.split())) + 0.2
@@ -192,6 +195,54 @@ class Stub:  # for testing the pipeline without a voice
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(pcm.tobytes())
         mp3, dur = wav_to_mp3(buf.getvalue())
         return mp3, (estimate_words(text, dur) if want_words else None)
+
+
+# ------------------------------------------------------------------------------------------ parallel workers
+_ENGINE = None
+
+
+def _init_worker():
+    global _ENGINE
+    _ENGINE = {"piper": Piper, "stub": Stub}[ENGINE]()
+
+
+def _work(args):
+    text, want_words = args
+    return _ENGINE.record_sync(text, want_words)
+
+
+def write_index(clips):
+    if clips:
+        (AUDIO / "index.json").write_text(json.dumps({"engine": ENGINE, "voice": VOICE, "clips": dict(sorted(clips.items()))}, separators=(",", ":")))
+
+
+def record_parallel(todo, clips):
+    """Record with several worker processes; checkpoint the index as we go; stop starting new clips when out of time."""
+    workers = max(1, min(4, os.cpu_count() or 2))
+    deadline = time.time() + BUDGET_MIN * 60
+    print(f"recording with {workers} workers (budget {BUDGET_MIN:.0f} min)")
+    failed = done = 0
+    with ProcessPoolExecutor(max_workers=workers, initializer=_init_worker) as ex:
+        futs = {ex.submit(_work, (it["text"], it["page"])): (it, fn) for it, fn in todo}
+        for fut in as_completed(futs):
+            it, fn = futs[fut]
+            try:
+                data, words = fut.result()
+                (AUDIO / fn).write_bytes(data)
+                clips[it["k"]] = {"f": fn, **({"w": words} if words else {})}
+            except Exception as e:  # noqa: BLE001
+                failed += 1
+                print(f"  could not record {it['text'][:40]!r}: {e}")
+            done += 1
+            if done % 50 == 0:
+                write_index(clips)
+                print(f"  {done}/{len(todo)} recorded ({time.time() - deadline + BUDGET_MIN * 60:.0f}s)", flush=True)
+            if time.time() > deadline:
+                print("time budget reached - saving what we have; run again to finish the rest")
+                for f in futs:
+                    f.cancel()
+                break
+    return failed
 
 
 # ------------------------------------------------------------------------------------------ main
@@ -207,6 +258,8 @@ async def main():
         return
     if ENGINE == "edge" and not await engine.connect():
         return
+    if ENGINE != "edge":
+        os.environ["TTS_VOICE"] = VOICE  # workers load exactly this voice
 
     items = json.loads(texts_path.read_text())
     index_path = AUDIO / "index.json"
@@ -228,27 +281,30 @@ async def main():
     print(f"{len(clips)} clips already recorded, {len(todo)} to record ({ENGINE}: {VOICE})")
 
     failed = 0
-    sem = asyncio.Semaphore(6 if ENGINE == "edge" else 1)
+    if ENGINE != "edge":
+        if todo:
+            failed = record_parallel(todo, clips)
+    else:
+        sem = asyncio.Semaphore(6)
 
-    async def work(it, fn):
-        nonlocal failed
-        async with sem:
-            last = None
-            for attempt in range(3):
-                try:
-                    data, words = await engine.record(it["text"], it["page"])
-                    (AUDIO / fn).write_bytes(data)
-                    clips[it["k"]] = {"f": fn, **({"w": words} if words else {})}
-                    return
-                except Exception as e:  # noqa: BLE001
-                    last = e
-                    await asyncio.sleep(1 + attempt)
-            failed += 1
-            print(f"  could not record {it['text'][:40]!r}: {last}")
+        async def work(it, fn):
+            nonlocal failed
+            async with sem:
+                last = None
+                for attempt in range(3):
+                    try:
+                        data, words = await engine.record(it["text"], it["page"])
+                        (AUDIO / fn).write_bytes(data)
+                        clips[it["k"]] = {"f": fn, **({"w": words} if words else {})}
+                        return
+                    except Exception as e:  # noqa: BLE001
+                        last = e
+                        await asyncio.sleep(1 + attempt)
+                failed += 1
+                print(f"  could not record {it['text'][:40]!r}: {last}")
 
-    await asyncio.gather(*(work(it, fn) for it, fn in todo))
-    if clips:
-        index_path.write_text(json.dumps({"engine": ENGINE, "voice": VOICE, "clips": dict(sorted(clips.items()))}, separators=(",", ":")))
+        await asyncio.gather(*(work(it, fn) for it, fn in todo))
+    write_index(clips)
     print(f"index.json: {len(clips)} clips ({failed} failed)")
 
 
