@@ -31,6 +31,7 @@ const CORE = [
   "/src/store.js",
   "/src/stories.js",
   "/src/styles.css",
+  "/src/sync.js",
   "/src/tracer.js",
   "/src/util.js",
   "/src/wordlist.js"
@@ -88,7 +89,7 @@ async function audioResponse(req) {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   if (/^\/audio\/.+\.(mp3|wav)$/.test(url.pathname)) { event.respondWith(audioResponse(req)); return; }
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);

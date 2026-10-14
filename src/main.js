@@ -8,6 +8,7 @@ import { P } from './phrases.js';
 import { store, addStar, stars, markDone, isDone, profiles, initData } from './store.js';
 import { createGames } from './games.js';
 import { createArcade } from './arcade.js';
+import { startSync } from './sync.js';
 import { createColour } from './colour.js';
 import { createMixup } from './mixup.js';
 import { createStickers } from './stickers.js';
@@ -16,7 +17,7 @@ import { createGrownups } from './grownups.js';
 const app = document.getElementById('app');
 let tracer = null;
 
-initData(); // first run on a device (or after a data reset): wipe old data, set up Arty and Harry
+initData(); startSync(); // first run on a device (or after a data reset): wipe old data, set up Arty and Harry
 unlockOnFirstTouch();
 // stop iPad pinch-zoom / double-tap zoom so little fingers don't lose the page
 document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -559,7 +560,7 @@ function route() {
   const h = location.hash || '#/';
   // every time the app is opened, the first screen is "who's playing?"
   const picked = sessionStorage.getItem('picked') && profiles.current();
-  if (!picked && !h.startsWith('#/who')) { location.hash = '#/who'; return; }
+  if (!picked && !h.startsWith('#/who') && !h.startsWith('#/grownups')) { location.hash = '#/who'; return; }
   for (const [re, fn] of routes) {
     const m = h.match(re);
     if (m) { fn(...m.slice(1)); return; }

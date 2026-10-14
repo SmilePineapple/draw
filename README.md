@@ -50,6 +50,19 @@ anything without a clip (e.g. a name a grown-up typed in).
   refuses requests from cloud servers like GitHub's, so run that one on your own computer.
 - The Grown-ups page has **Save voices for offline** to cache every clip on the iPad.
 
+## Cloud sync (so grown-ups can see progress from any device)
+
+Progress is saved on each iPad, and also sent (a few seconds after each change) to a small Upstash Redis database through `api/sync.js`.
+The Grown-ups page then merges what every device has sent. To switch it on once:
+
+1. Vercel dashboard -> your project -> **Storage** -> **Create Database** -> **Upstash (Redis)** -> free plan -> connect it to this project
+   (this adds the `KV_REST_API_URL` / `KV_REST_API_TOKEN` environment variables).
+2. **Redeploy** the project.
+3. Open the Grown-ups page: it says "☁️ Synced" with the devices it found. Without the database it just shows "Cloud sync is not switched on yet".
+
+Only progress numbers are synced (stars, finished drawings/letters/stories, activity, best scores) — no pictures. Writes are open to the web;
+reading is protected by the grown-ups PIN (set `SYNC_PIN` in Vercel to change it from 5253).
+
 ## Offline support
 
 `sw.js` precaches the app. After adding or removing files run `node scripts/precache.mjs` to refresh its file list (and bump `VERSION` in `sw.js` if you want to force every device to re-download).

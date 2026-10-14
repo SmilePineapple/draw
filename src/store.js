@@ -10,8 +10,12 @@ const rawGet = (key, fallback) => {
     return fallback;
   }
 };
+let changeHook = null;
+/** sync.js listens here so each child's changes are sent to the cloud */
+export const setChangeHook = (fn) => { changeHook = fn; };
 const rawSet = (key, value) => {
   try { localStorage.setItem(PFX + key, JSON.stringify(value)); } catch { /* ignore */ }
+  if (changeHook && key.startsWith('p:')) changeHook(key.split(':')[1]);
 };
 
 /** device-wide settings */

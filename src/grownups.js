@@ -4,6 +4,7 @@ import { STORIES } from './stories.js';
 import { CAPS, SMALLS, NUMS } from './glyphs.js';
 import { profiles, storeOf, starsEarned, starsSpent, doneOf } from './store.js';
 import { prefs, setSound, speak } from './sound.js';
+import { mergedView, refreshRemote, resetRemote, syncState } from './sync.js';
 import { voiceStatus, downloadVoices } from './offline.js';
 import { P } from './phrases.js';
 
@@ -113,17 +114,26 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
 
   // ------------------------------------------------------------ dashboard
   const DAY = 86400000;
-  function dashboard(pid) {
+  const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+  const syncNote = (v) => {
+    if (syncState.status === 'ok') return `☁️ <b>Synced</b> — showing everything from ${v.devices.length} device${v.devices.length > 1 ? 's' : ''}: ${v.devices.map((d) => `${esc(d.label)}${d.local ? ' (this one)' : ` (${ago(d.updated)})`}`).join(', ')}.`;
+    if (syncState.status === 'off') return '📱 Cloud sync is not switched on yet, so this page only shows what was played on <b>this device</b>. (See "Cloud sync" in the README.)';
+    if (syncState.status === 'error') return '📱 Could not reach the cloud just now — showing what is saved on this device.';
+    return '☁️ Checking the cloud…';
+  };
+  function dashboard(pid, fromRefresh = false) {
     const list = profiles.list();
     if (!list.length) { location.hash = '#/who'; return; }
     pid = pid || profiles.currentId() || list[0].id;
     const p = profiles.get(pid) || list[0];
     const st = storeOf(p.id);
-    const done = doneOf(p.id);
+    const v = mergedView(p.id); // this device + everything the other devices have sent to the cloud
+    if (!fromRefresh) refreshRemote().then((changed) => { if (changed && $('.tabs')) dashboard(p.id, true); else if ($('.device-note')) $('.device-note').innerHTML = syncNote(mergedView(p.id)); });
+    const done = v.done;
     const has = (k, id) => !!done[`${k}:${id}`];
     const count = (k) => Object.keys(done).filter((x) => x.startsWith(`${k}:`)).length;
-    const log = st.get('activity', []);
-    const tricky = Object.keys(st.get('tricky', {}));
+    const log = v.activity;
+    const tricky = Object.keys(v.tricky);
     const stickers = st.get('stickers', []).length;
     const games = log.filter((e) => e.k === 'game');
 
@@ -138,7 +148,7 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
     const gameRows = Object.keys(NAMES).map((g) => {
       const rows = games.filter((e) => e.i === g);
       const last = rows.at(-1);
-      const best = st.get(`best:${g}`, 0);
+      const best = v.best[g] || 0;
       const score = last ? (last.of ? `${last.score}/${last.of}` : `${last.score}`) : '–';
       return `<tr><td>${NAMES[g]}</td><td>${rows.length}</td><td>${score}${best ? ` (best ${best})` : ''}</td></tr>`;
     }).join('');
@@ -149,7 +159,7 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
     app.innerHTML = `
       <div class="screen">
         ${topBar({ back: '#/', title: 'Grown-ups', right: '' })}
-        <p class="device-note">📱 Progress is saved on <b>the device it was played on</b> — this one. Last activity here for ${esc(p.name)}: <b>${esc(lastSeen)}</b>. To see the children's work, open Grown-ups on the same iPad (and the same Home Screen icon / Safari) that they play on.</p>
+        <p class="device-note">${syncNote(v)}</p>
         <nav class="tabs">
           ${list.map((x) => `<button class="tab ${x.id === p.id ? 'on' : ''}" data-id="${x.id}">${esc(x.name)}</button>`).join('')}
           <button class="tab" id="newp">➕ Add player</button>
@@ -166,8 +176,8 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
           </section>
 
           <section class="stats">
-            <div class="stat"><b>${starsEarned(p.id)}</b><span>⭐ stars earned</span></div>
-            <div class="stat"><b>${starsEarned(p.id) - starsSpent(p.id)}</b><span>stars to spend</span></div>
+            <div class="stat"><b>${v.earned}</b><span>⭐ stars earned</span></div>
+            <div class="stat"><b>${v.earned - v.spent}</b><span>stars to spend</span></div>
             <div class="stat"><b>${stickers}</b><span>stickers</span></div>
             <div class="stat"><b>${count('draw')}/${DRAWINGS.length}</b><span>drawings</span></div>
             <div class="stat"><b>${count('letter')}/${CAPS.length + SMALLS.length + NUMS.length}</b><span>letters &amp; numbers</span></div>
@@ -233,7 +243,7 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
     $('#newp').addEventListener('click', () => profileForm());
     $('#edit').addEventListener('click', () => profileForm(p));
     $('#reset').addEventListener('click', () => {
-      if (confirm(`Reset all of ${p.name}'s stars, stickers and progress? This cannot be undone.`)) { profiles.resetData(p.id); dashboard(p.id); }
+      if (confirm(`Reset all of ${p.name}'s stars, stickers and progress? This cannot be undone.`)) { profiles.resetData(p.id); resetRemote(p.id); dashboard(p.id); }
     });
     $('#del').addEventListener('click', () => {
       if (confirm(`Remove ${p.name} and all their progress?`)) {
