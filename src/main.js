@@ -7,6 +7,7 @@ import { DEFAULT_WORDS } from './wordlist.js';
 import { P } from './phrases.js';
 import { store, addStar, stars, markDone, isDone, profiles, initData } from './store.js';
 import { createGames } from './games.js';
+import { createArcade } from './arcade.js';
 import { createColour } from './colour.js';
 import { createMixup } from './mixup.js';
 import { createStickers } from './stickers.js';
@@ -519,6 +520,7 @@ function wordPage(raw) {
 const ctx = { app, $, esc, topBar, wireSound, drawingThumb, starsBadge, confetti };
 const reader = createReader(ctx);
 const games = createGames(ctx);
+const arcade = createArcade(ctx);
 const colour = createColour(ctx);
 const mixup = createMixup(ctx);
 const stickers = createStickers(ctx);
@@ -542,6 +544,7 @@ const routes = [
   [/^#\/grownups$/, leave(() => grownups.gate())],
   [/^#\/games$/, leave(() => games.hub())],
   [/^#\/game\/(match|hunt|build|whirl)$/, leave((g) => games[g]())],
+  [/^#\/arcade\/(quick|pop|worm)$/, leave((g) => arcade[g]())],
   [/^#\/count$/, leave(() => colour.countPage())],
   [/^#\/colour$/, leave(() => colour.colourList())],
   [/^#\/colour\/([\w-]+)$/, leave((id) => colour.colourPage(id))],

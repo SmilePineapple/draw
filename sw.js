@@ -11,6 +11,7 @@ const CORE = [
   "/icons/icon.svg",
   "/index.html",
   "/manifest.webmanifest",
+  "/src/arcade.js",
   "/src/builders.js",
   "/src/colour.js",
   "/src/drawings.js",
