@@ -4,7 +4,7 @@ import { STORIES, WORD_PICS } from './stories.js';
 import { speak, ding, oops, cheer, stopSpeaking } from './sound.js';
 import { addStar, store, logActivity } from './store.js';
 import { shuffle, pick, sample } from './util.js';
-import { PICS } from './wordlist.js';
+import { PICS, DEFAULT_WORDS } from './wordlist.js';
 import { P, L } from './phrases.js';
 
 
@@ -27,6 +27,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
       ['#/game/match', '🖼️', 'Picture Match', 'Match words to pictures', '#e53935'],
       ['#/game/hunt', '🔎', 'Word Hunt', 'Find the word in a story', '#1e6fe0'],
       ['#/game/build', '🔤', 'Word Builder', 'Make words with letter tiles', '#7a3fd1'],
+      ['#/game/whirl', '🌀', 'Whirl Word', 'Catch the word as it zooms!', '#00a6a6'],
       ['#/count', '🔢', 'Count & Colour', 'Count them, then colour them', '#f08a24'],
       ['#/colour', '🖍️', 'Colouring Book', 'Colour in your heroes', '#18a35a'],
       ['#/mixup', '🤪', 'Silly Mix-up', 'Mix heads, eyes and mouths', '#d6336c'],
@@ -238,6 +239,80 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
     });
   }
 
-  const games = { match, hunt, build };
+  // ------------------------------------------------------------------ 4. whirl word (catch the zooming word)
+  const WHIRL_COLOURS = ['#e53935', '#1e6fe0', '#18a35a', '#f08a24', '#7a3fd1', '#d6336c'];
+  function whirl() {
+    const pool = [...new Set([...PICS.map(([w]) => w), ...DEFAULT_WORDS.map(([w]) => w.toLowerCase())])].filter((w) => w.length <= 8);
+    const targets = sample(pool, 6);
+    let raf = 0;
+    run({
+      id: 'whirl', title: 'Whirl Word', total: targets.length,
+      round(i, done) {
+        cancelAnimationFrame(raf);
+        const word = targets[i];
+        const near = pool.filter((w) => w !== word).sort((a, b) => Math.abs(a.length - word.length) - Math.abs(b.length - word.length) + (Math.random() - 0.5) * 3);
+        const opts = shuffle([word, ...near.slice(0, 3)]);
+        const speed = 130 + i * 75; // pixels per second: every round is faster
+        let missed = false;
+        let over = false;
+        const body = $('#gbody');
+        body.innerHTML = `
+          <div class="g-prompt">Catch the word!</div>
+          <div class="g-word"><span>${esc(styled(word))}</span><button class="btn round" id="hear" aria-label="Hear it">🔊</button></div>
+          <div class="speedo">🚀 Speed ${i + 1}</div>
+          <div class="whirl-field" id="wf">${opts.map((w, k) => `<button class="whirl-w" data-w="${w}" style="background:${WHIRL_COLOURS[k]}">${esc(styled(w))}</button>`).join('')}</div>`;
+        speak(P.findShort(word));
+        $('#hear').addEventListener('click', () => speak(word));
+        const field = $('#wf');
+        const els = [...field.querySelectorAll('.whirl-w')];
+        const W = field.clientWidth || 600;
+        const H = field.clientHeight || 360;
+        const bods = els.map((el, k) => {
+          const a = Math.random() * Math.PI * 2;
+          return { el, x: Math.random() * Math.max(10, W - el.offsetWidth), y: Math.random() * Math.max(10, H - el.offsetHeight),
+            vx: Math.cos(a) * speed * (0.8 + Math.random() * 0.4), vy: Math.sin(a) * speed * (0.8 + Math.random() * 0.4),
+            ph: Math.random() * 6, wob: 3 + i * 0.8 + k * 0.5 };
+        });
+        let last = performance.now();
+        const tick = (now) => {
+          if (over) return;
+          if (!field.isConnected) return; // left the game
+          const dt = Math.min(0.05, (now - last) / 1000);
+          last = now;
+          for (const b of bods) {
+            const w = b.el.offsetWidth, h = b.el.offsetHeight;
+            b.x += b.vx * dt; b.y += b.vy * dt; b.r = Math.sin(now / 1000 * b.wob + b.ph) * 22;
+            if (b.x < 0) { b.x = 0; b.vx = Math.abs(b.vx); } else if (b.x > field.clientWidth - w) { b.x = field.clientWidth - w; b.vx = -Math.abs(b.vx); }
+            if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy); } else if (b.y > field.clientHeight - h) { b.y = field.clientHeight - h; b.vy = -Math.abs(b.vy); }
+            b.el.style.transform = `translate(${b.x}px,${b.y}px) rotate(${b.r}deg)`;
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        field.addEventListener('pointerdown', (e) => {
+          const b = e.target.closest('.whirl-w');
+          if (!b || over || b.disabled) return;
+          if (b.dataset.w === word) {
+            over = true;
+            cancelAnimationFrame(raf);
+            els.forEach((x) => { x.disabled = true; if (x !== b) x.classList.add('fade'); });
+            b.classList.add('right', 'caught');
+            b.style.transform = `translate(${field.clientWidth / 2 - b.offsetWidth / 2}px,${field.clientHeight / 2 - b.offsetHeight / 2}px) scale(1.5)`;
+            ding();
+            speak(word);
+            done(!missed);
+          } else {
+            missed = true;
+            b.disabled = true;
+            b.classList.add('fade');
+            oops();
+            speak(P.wrongWord(b.dataset.w));
+          }
+        });
+      },
+    });
+  }
+
+  const games = { match, hunt, build, whirl };
   return { hub, ...games };
 }
