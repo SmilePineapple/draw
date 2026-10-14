@@ -134,17 +134,22 @@ export function createGrownups({ app, $, esc, topBar, wireSound, drawingThumb, c
       return { t0, n: log.filter((e) => e.t >= t0 && e.t < t0 + DAY).length };
     });
     const max = Math.max(1, ...days.map((d) => d.n));
-    const gameRows = ['match', 'hunt', 'build'].map((g) => {
+    const NAMES = { match: '🖼️ Picture Match', hunt: '🔎 Word Hunt', build: '🔤 Word Builder', whirl: '🌀 Whirl Word', worm: '🐛 Wormy', gobble: '🫧 Gobble', pop: '💥 Pop Party', quick: '👆 Quick Tap', shoot: '🎯 Bullseye Blast', race: '🏎️ Zoom Race' };
+    const gameRows = Object.keys(NAMES).map((g) => {
       const rows = games.filter((e) => e.i === g);
-      const nm = { match: '🖼️ Picture Match', hunt: '🔎 Word Hunt', build: '🔤 Word Builder' }[g];
       const last = rows.at(-1);
-      return `<tr><td>${nm}</td><td>${rows.length}</td><td>${last ? `${last.score}/${last.of}` : '–'}</td></tr>`;
+      const best = st.get(`best:${g}`, 0);
+      const score = last ? (last.of ? `${last.score}/${last.of}` : `${last.score}`) : '–';
+      return `<tr><td>${NAMES[g]}</td><td>${rows.length}</td><td>${score}${best ? ` (best ${best})` : ''}</td></tr>`;
     }).join('');
+    const lastT = log.length ? new Date(log.at(-1).t) : null;
+    const lastSeen = lastT ? lastT.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'nothing yet';
     const doneWords = Object.keys(done).filter((k) => k.startsWith('word:')).map((k) => k.slice(5));
 
     app.innerHTML = `
       <div class="screen">
         ${topBar({ back: '#/', title: 'Grown-ups', right: '' })}
+        <p class="device-note">📱 Progress is saved on <b>the device it was played on</b> — this one. Last activity here for ${esc(p.name)}: <b>${esc(lastSeen)}</b>. To see the children's work, open Grown-ups on the same iPad (and the same Home Screen icon / Safari) that they play on.</p>
         <nav class="tabs">
           ${list.map((x) => `<button class="tab ${x.id === p.id ? 'on' : ''}" data-id="${x.id}">${esc(x.name)}</button>`).join('')}
           <button class="tab" id="newp">➕ Add player</button>

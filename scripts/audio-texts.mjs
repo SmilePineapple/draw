@@ -12,6 +12,7 @@ const key = (t) => t.toLowerCase().replace(/\s+/g, ' ').trim();
 const out = new Map(); // key -> {text, page}
 const add = (x, page = false) => {
   if (Array.isArray(x)) { x.forEach((p) => add(p)); return; } // phrases are lists of reusable parts
+  if (x && typeof x === 'object' && x.pause) return;
   if (x && typeof x === 'object') { if (!out.has(x.k)) out.set(x.k, { k: x.k, text: x.t, page }); return; }
   if (x && !out.has(key(x))) out.set(key(x), { k: key(x), text: x.replace(/\s+/g, ' ').trim(), page });
 };

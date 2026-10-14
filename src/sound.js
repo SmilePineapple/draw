@@ -98,8 +98,9 @@ export async function clipFiles() { await loadClips(); return Object.values(clip
 
 const keyOf = (t) => t.toLowerCase().replace(/\s+/g, ' ').trim();
 // A part is a string, or {k, t}: a clip key plus the text to say if there is no clip.
-const toPart = (x) => (typeof x === 'string' ? { key: keyOf(x), text: x } : { key: x.k, text: x.t });
-const toParts = (p) => (Array.isArray(p) ? p : [p]).filter((x) => x && (typeof x === 'string' ? x.trim() : x.t)).map(toPart);
+// {pause: ms} is a short silence between parts.
+const toPart = (x) => (typeof x === 'string' ? { key: keyOf(x), text: x } : x.pause ? { pause: x.pause } : { key: x.k, text: x.t });
+const toParts = (p) => (Array.isArray(p) ? p : [p]).filter((x) => x && (typeof x === 'string' ? x.trim() : x.pause || x.t)).map(toPart);
 
 const voiceEl = typeof Audio !== 'undefined' ? new Audio() : null;
 let token = 0; // bumps whenever speech is cancelled so old callbacks go quiet
@@ -179,6 +180,7 @@ function browserSay(text, o, mine, done) {
 }
 
 function playOne(part, o, mine, done) {
+  if (part.pause) { setTimeout(() => { if (mine === token) done(); }, part.pause); return; }
   const c = clips?.[part.key];
   if (c && voiceEl) { playClip(c, o, mine, done); return; }
   if (clips && Object.keys(clips).length) missingClips.add(part.text);

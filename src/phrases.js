@@ -13,7 +13,7 @@ export const P = {
   drawIntro: (title, say) => ["Let's draw", title, say],
   drawWin: (title) => ['You drew', title, 'Amazing job!'],
   numberIntro: (name) => ["Let's write the number", name, 'Start at the green dot.'],
-  letterStart: (info) => [info, 'Start at the green dot.'],
+  letterStart: (info) => [...[].concat(info), { pause: 350 }, 'Start at the green dot.'],
   nextLine: (n) => `Now line ${n}.`,
   wordLetter: (name) => [letterOrName(name), 'Start at the green dot.'],
   keepGoing: (n) => `Keep going! Line ${n}.`,
@@ -46,4 +46,4 @@ export const P = {
 };
 
 /** Flatten a phrase to plain text (for the screen / fallback voice). */
-export const phraseText = (p) => (Array.isArray(p) ? p.map((x) => (typeof x === 'string' ? x : x.t)).join(' ') : typeof p === 'string' ? p : p.t);
+export const phraseText = (p) => (Array.isArray(p) ? p.filter((x) => !x.pause).map((x) => (typeof x === 'string' ? x : x.t)).join(' ') : typeof p === 'string' ? p : p.t);

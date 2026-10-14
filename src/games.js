@@ -28,6 +28,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
       ['#/game/hunt', '🔎', 'Word Hunt', 'Find the word in a story', '#1e6fe0'],
       ['#/game/build', '🔤', 'Word Builder', 'Make words with letter tiles', '#7a3fd1'],
       ['#/game/whirl', '🌀', 'Whirl Word', 'Catch the word as it zooms!', '#00a6a6'],
+      ['#/arcade/gobble', '🫧', 'Gobble', 'Eat smaller blobs, run from big ones!', '#5e35b1'],
       ['#/arcade/worm', '🐛', 'Wormy', 'Eat sweets and grow a giant worm!', '#2ec27e'],
       ['#/arcade/race', '🏎️', 'Zoom Race', 'Race the other cars to the finish!', '#d32f2f'],
       ['#/arcade/shoot', '🎯', 'Bullseye Blast', 'Hit the zooming targets!', '#e53935'],

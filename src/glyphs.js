@@ -109,7 +109,8 @@ export function charInfo(ch) {
     name: ch.toUpperCase(),
     big: ch,
     caption: `${ch.toUpperCase()} is for ${word}`,
-    speak: `${isCap ? 'Capital' : 'Small'} ${LETTER_SPELL[lower]}. ${LETTER_SPELL[lower]} is for ${word}.`,
+    // separate parts with a pause between, so it is "Capital vee ... vee is for van" and not "vee vee is for van"
+    speak: [`${isCap ? 'Capital' : 'Small'} ${LETTER_SPELL[lower]}.`, { pause: 450 }, `${LETTER_SPELL[lower]} is for ${word}.`],
     emoji,
   };
 }
