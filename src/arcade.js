@@ -125,7 +125,8 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
       <div class="gbody wormbody">
         <div class="arc-hud"><span>🍬 <b id="ws">0</b></span><span>🏆 ${best('worm')}</span></div>
         <canvas id="wc" class="worm-canvas"></canvas>
-        <div class="worm-hint" id="wh">Drag your finger to steer. Eat the sweets and don't bump the other worms!</div>
+        <button class="boost-btn" id="boost" aria-label="Boost">🚀<small>BOOST</small></button>
+        <div class="worm-hint" id="wh">Drag your finger to steer. Hold 🚀 to zoom! Eat sweets and don't bump the other worms!</div>
       </div>`);
     const cv = $('#wc');
     const g = cv.getContext('2d');
@@ -158,6 +159,11 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
     cv.addEventListener('pointerdown', (e) => { target = pos(e); cv.setPointerCapture?.(e.pointerId); $('#wh')?.remove(); });
     cv.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') target = pos(e); });
     cv.addEventListener('pointerup', () => { target = null; });
+    let boosting = false; let boostCost = 0;
+    const bb = $('#boost');
+    const setBoost = (on) => (e) => { e.preventDefault(); boosting = on; bb.classList.toggle('on', on); if (on) $('#wh')?.remove(); };
+    bb.addEventListener('pointerdown', setBoost(true));
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => bb.addEventListener(ev, setBoost(false)));
 
     const move = (w, dt) => {
       const h = w.segs[0];
@@ -194,6 +200,11 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
       const dt = Math.min(0.04, (now - last) / 1000); last = now;
       // steer: towards the finger relative to screen centre
       if (target) turnTo(me, Math.atan2(target.y - cv.clientHeight / 2, target.x - cv.clientWidth / 2), dt, 5.5);
+      me.speed = boosting && me.segs.length > 7 ? 270 : 150;
+      if (me.speed > 150) { // boosting costs a little tail, dropped behind as sweets
+        boostCost += dt;
+        if (boostCost > 0.3) { boostCost = 0; const t = me.segs.pop(); addFood(t.x, t.y, 1, me.colour); }
+      }
       move(me, dt); eat(me);
       for (const b of bots) {
         if (!b.alive) continue;
@@ -258,6 +269,83 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
     stopLoop = () => { over = true; cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
   }
 
-  const api = { quick, pop, worm };
+  // ------------------------------------------------------------ 4. bullseye blast (target shooting)
+  function shoot() {
+    shell('Bullseye Blast', `
+      <div class="gbody">
+        <div class="arc-hud"><span>⏱️ <b id="bt">30</b></span><span>🎯 <b id="bs">0</b></span><span>🏆 ${best('shoot')}</span></div>
+        <div class="shoot-field" id="sf"></div>
+      </div>`);
+    const field = $('#sf');
+    let score = 0; let over = false; let elapsed = 0;
+    const targets = [];
+    const mkTarget = () => {
+      const size = 96 + Math.random() * 50;
+      const el = document.createElement('div');
+      el.className = 'bull';
+      el.style.width = el.style.height = `${size}px`;
+      el.innerHTML = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#fff" stroke="#e53935" stroke-width="3"/><circle cx="50" cy="50" r="34" fill="#e53935"/><circle cx="50" cy="50" r="22" fill="#fff"/><circle cx="50" cy="50" r="10" fill="#e53935"/></svg>';
+      field.appendChild(el);
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const t = { el, size, dir, x: dir > 0 ? -size : field.clientWidth, y: 10 + Math.random() * Math.max(10, field.clientHeight - size - 20), vx: dir * (110 + Math.random() * 90 + elapsed * 5), wob: Math.random() * 6, amp: 20 + Math.random() * 50 };
+      targets.push(t);
+    };
+    const hitAt = (px, py) => {
+      let hit = null;
+      for (const t of targets) {
+        const cx = t.x + t.size / 2; const cy = t.cy + t.size / 2;
+        const d = Math.hypot(px - cx, py - cy) / (t.size / 2);
+        if (d <= 1 && (!hit || d < hit.d)) hit = { t, d };
+      }
+      return hit;
+    };
+    const splat = (x, y, txt, good) => {
+      const m = document.createElement('div');
+      m.className = `shot ${good ? 'good' : ''}`;
+      m.style.left = `${x}px`; m.style.top = `${y}px`;
+      m.textContent = txt;
+      field.appendChild(m);
+      setTimeout(() => m.remove(), 700);
+    };
+    field.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (over) return;
+      const r = field.getBoundingClientRect();
+      const x = e.clientX - r.left; const y = e.clientY - r.top;
+      const h = hitAt(x, y);
+      if (!h) { oops(); splat(x, y, '💨', false); return; }
+      const pts = h.d < 0.2 ? 5 : h.d < 0.45 ? 3 : h.d < 0.7 ? 2 : 1;
+      score += pts;
+      $('#bs').textContent = score;
+      ding();
+      splat(x, y, pts === 5 ? '🎯 +5' : `+${pts}`, true);
+      h.t.el.classList.add('hit');
+      h.t.dead = true;
+      setTimeout(() => h.t.el.remove(), 300);
+    });
+    let last = performance.now(); let raf = 0; let spawnT = 0;
+    const tick = (now) => {
+      if (over || !field.isConnected) return;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      spawnT -= dt;
+      if (spawnT <= 0 && targets.length < 6) { mkTarget(); spawnT = Math.max(0.45, 1.1 - elapsed * 0.02); }
+      for (const t of targets) {
+        t.x += t.vx * dt; t.wob += dt * 2;
+        t.cy = Math.max(0, Math.min(field.clientHeight - t.size, t.y + Math.sin(t.wob) * t.amp));
+        t.el.style.transform = `translate(${t.x}px,${t.cy}px)`;
+      }
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        if (t.dead || t.x < -t.size - 5 && t.dir < 0 || t.x > field.clientWidth + 5 && t.dir > 0) { if (!t.dead) t.el.remove(); targets.splice(i, 1); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    timer(30, (l) => { $('#bt').textContent = Math.ceil(l); elapsed = 30 - l; }, () => { over = true; cancelAnimationFrame(raf); result('shoot', 'Bullseye Blast', score, 'points'); });
+    const clear = stopLoop;
+    stopLoop = () => { clear(); over = true; cancelAnimationFrame(raf); };
+  }
+
+  const api = { quick, pop, worm, shoot };
   return api;
 }
