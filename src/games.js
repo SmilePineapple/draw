@@ -29,6 +29,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
       ['#/game/build', '🔤', 'Word Builder', 'Make words with letter tiles', '#7a3fd1'],
       ['#/game/whirl', '🌀', 'Whirl Word', 'Catch the word as it zooms!', '#00a6a6'],
       ['#/arcade/worm', '🐛', 'Wormy', 'Eat sweets and grow a giant worm!', '#2ec27e'],
+      ['#/arcade/race', '🏎️', 'Zoom Race', 'Race the other cars to the finish!', '#d32f2f'],
       ['#/arcade/shoot', '🎯', 'Bullseye Blast', 'Hit the zooming targets!', '#e53935'],
       ['#/arcade/pop', '💥', 'Pop Party', 'Pop the heroes super fast!', '#ff7043'],
       ['#/arcade/quick', '👆', 'Quick Tap', 'How fast can you tap?', '#5c6bc0'],

@@ -346,6 +346,120 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
     stopLoop = () => { clear(); over = true; cancelAnimationFrame(raf); };
   }
 
-  const api = { quick, pop, worm, shoot };
+  // ------------------------------------------------------------ 5. zoom race (steer, dodge cones, grab boosts, beat the other cars)
+  function race() {
+    shell('Zoom Race', `
+      <div class="gbody wormbody">
+        <div class="arc-hud"><span>🏁 <b id="rp">1st</b></span><span>⭐ <b id="rs">0</b></span><span>🏆 ${best('race')}</span></div>
+        <canvas id="rc" class="worm-canvas race-canvas"></canvas>
+        <div class="worm-hint" id="rh">Drag your finger left and right to steer. Grab ⚡ to zoom, dodge the cones!</div>
+      </div>`);
+    const cv = $('#rc'); const g = cv.getContext('2d');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const resize = () => { cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; };
+    resize();
+    const LEN = 9000;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const car = (x, colour, base) => ({ x, s: 0, v: 0, colour, base, boost: 0 });
+    const me = car(0.5, '#ff3b3b', 0);
+    const rivals = [car(0.2, '#2e86ff', 430), car(0.5, '#ffb02e', 415), car(0.8, '#8a5cf6', 440)];
+    rivals.forEach((r, i) => { r.s = 0; r.phase = i * 2; });
+    me.s = 0;
+    const objs = [];
+    for (let s0 = 700; s0 < LEN - 400; s0 += rnd(170, 300)) {
+      const kind = Math.random() < 0.3 ? 'boost' : Math.random() < 0.35 ? 'star' : 'cone';
+      objs.push({ s: s0, x: rnd(0.1, 0.9), kind, used: false });
+    }
+    let stars = 0; let target = null; let t = 0; let over = false; let raf = 0; let last = performance.now();
+    let countdown = 3.2; let finished = null; let msg = ''; let msgT = 0;
+    const pos = (e) => { const r = cv.getBoundingClientRect(); return (e.clientX - r.left); };
+    const roadBox = () => { const W = cv.clientWidth; const rw = Math.min(W, 560); return { rw, x0: (W - rw) / 2 }; };
+    const down = (e) => { target = pos(e); $('#rh')?.remove(); };
+    cv.addEventListener('pointerdown', down);
+    cv.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') target = pos(e); });
+    const place = () => 1 + rivals.filter((r) => r.s > me.s).length;
+    const ord = (n) => ['1st', '2nd', '3rd', '4th'][n - 1];
+    const flash = (m) => { msg = m; msgT = 1; };
+    const tick = (now) => {
+      if (!cv.isConnected || over) return;
+      const dt = Math.min(0.04, (now - last) / 1000); last = now;
+      if (countdown > 0) {
+        const before = Math.ceil(countdown);
+        countdown -= dt;
+        if (Math.ceil(countdown) !== before && countdown > 0) ding();
+      } else if (!finished) {
+        t += dt;
+        const { rw, x0 } = roadBox();
+        if (target != null) me.x += (Math.max(0.06, Math.min(0.94, (target - x0) / rw)) - me.x) * Math.min(1, dt * 9);
+        // speed: eases up to a top speed, boost adds a burst
+        me.boost = Math.max(0, me.boost - dt);
+        const top = 470 + (me.boost > 0 ? 230 : 0);
+        me.v += (top - me.v) * Math.min(1, dt * 1.6);
+        me.s += me.v * dt;
+        for (const o of objs) {
+          if (o.used || Math.abs(o.s - me.s) > 40 || Math.abs(o.x - me.x) > 0.11) continue;
+          o.used = true;
+          if (o.kind === 'cone') { me.v *= 0.35; oops(); flash('Bump!'); } else if (o.kind === 'boost') { me.boost = 1.6; cheer(); flash('ZOOM!'); } else { stars++; ding(); $('#rs').textContent = stars; }
+        }
+        rivals.forEach((r) => {
+          // rivals speed up a bit when behind and slow a bit when well ahead, so it is always a close race
+          const gap = me.s - r.s;
+          const v = r.base + Math.max(-60, Math.min(70, gap * 0.12)) + Math.sin(t * 1.3 + r.phase) * 25;
+          r.s += v * dt;
+          r.x += Math.sin(t * 0.8 + r.phase) * 0.06 * dt;
+        });
+        $('#rp').textContent = ord(place());
+        const crossed = [me, ...rivals].filter((c) => c.s >= LEN);
+        if (me.s >= LEN) finished = place();
+        void crossed;
+        if (finished) setTimeout(() => { over = true; const pts = [10, 6, 3, 1][finished - 1] + stars; result('race', 'Zoom Race', pts, 'points'); }, 900);
+      }
+      msgT = Math.max(0, msgT - dt * 1.4);
+      draw();
+      raf = requestAnimationFrame(tick);
+    };
+    const drawCar = (cx, cy, w, colour, boost) => {
+      const h = w * 1.7;
+      if (boost) { g.fillStyle = '#ffb400'; g.beginPath(); g.moveTo(cx - w * 0.3, cy + h / 2); g.lineTo(cx, cy + h / 2 + w * (0.8 + Math.random() * 0.4)); g.lineTo(cx + w * 0.3, cy + h / 2); g.fill(); }
+      g.fillStyle = '#222';
+      for (const sx of [-1, 1]) for (const sy of [-0.3, 0.32]) g.fillRect(cx + sx * w * 0.52 - w * 0.11, cy + sy * h - h * 0.11, w * 0.22, h * 0.22);
+      g.fillStyle = colour; g.beginPath(); g.roundRect(cx - w / 2, cy - h / 2, w, h, w * 0.3); g.fill();
+      g.fillStyle = '#bfe9ff'; g.beginPath(); g.roundRect(cx - w * 0.34, cy - h * 0.18, w * 0.68, h * 0.3, w * 0.12); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(cx - w * 0.06, cy - h / 2 + 2, w * 0.12, h * 0.9);
+    };
+    const draw = () => {
+      const W = cv.clientWidth; const H = cv.clientHeight;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const { rw, x0 } = roadBox();
+      g.fillStyle = '#58b947'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#4a4e5a'; g.fillRect(x0, 0, rw, H);
+      g.fillStyle = '#fff'; g.fillRect(x0 - 8, 0, 8, H); g.fillRect(x0 + rw, 0, 8, H);
+      const py = H * 0.78; const sc = 0.55; // world units -> pixels
+      const off = (me.s * sc) % 80;
+      g.fillStyle = '#ffe066';
+      for (let y = -80 + off; y < H; y += 80) { g.fillRect(x0 + rw / 3 - 3, y, 6, 40); g.fillRect(x0 + (2 * rw) / 3 - 3, y, 6, 40); }
+      const sy = (s) => py - (s - me.s) * sc;
+      // finish line
+      const fy = sy(LEN);
+      if (fy > -40 && fy < H + 40) { for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#fff' : '#111'; g.fillRect(x0 + (rw / 16) * i, fy - 12, rw / 16, 12); g.fillStyle = i % 2 ? '#111' : '#fff'; g.fillRect(x0 + (rw / 16) * i, fy, rw / 16, 12); } }
+      for (const o of objs) {
+        const y = sy(o.s); if (y < -40 || y > H + 40 || o.used) continue;
+        const x = x0 + o.x * rw;
+        if (o.kind === 'cone') { g.fillStyle = '#ff7a1a'; g.beginPath(); g.moveTo(x, y - 24); g.lineTo(x + 18, y + 14); g.lineTo(x - 18, y + 14); g.fill(); g.fillStyle = '#fff'; g.fillRect(x - 9, y - 4, 18, 6); } else if (o.kind === 'boost') { g.fillStyle = '#ffd23f'; g.beginPath(); g.roundRect(x - 22, y - 22, 44, 44, 10); g.fill(); g.font = '30px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⚡', x, y + 2); } else { g.font = '34px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⭐', x, y); }
+      }
+      const cw = Math.min(46, rw * 0.085);
+      rivals.forEach((r) => { const y = sy(r.s); if (y > -80 && y < H + 80) drawCar(x0 + r.x * rw, y, cw, r.colour, false); });
+      drawCar(x0 + me.x * rw, py, cw, me.colour, me.boost > 0);
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (countdown > 0) { g.font = '900 120px system-ui'; g.fillStyle = '#fff'; g.strokeStyle = '#222'; g.lineWidth = 10; const c = Math.ceil(countdown - 0.2); const txt = c > 0 ? String(c) : 'GO!'; g.strokeText(txt, W / 2, H * 0.35); g.fillText(txt, W / 2, H * 0.35); }
+      if (msgT > 0 && !finished) { g.font = '900 54px system-ui'; g.globalAlpha = msgT; g.fillStyle = '#fff'; g.strokeStyle = '#222'; g.lineWidth = 8; g.strokeText(msg, W / 2, H * 0.4); g.fillText(msg, W / 2, H * 0.4); g.globalAlpha = 1; }
+      if (finished) { g.font = '900 80px system-ui'; g.fillStyle = '#fff'; g.strokeStyle = '#222'; g.lineWidth = 10; const txt = finished === 1 ? '🏆 You won!' : `${ord(finished)} place!`; g.strokeText(txt, W / 2, H * 0.35); g.fillText(txt, W / 2, H * 0.35); }
+    };
+    window.addEventListener('resize', resize);
+    raf = requestAnimationFrame(tick);
+    stopLoop = () => { over = true; cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
+  }
+
+  const api = { quick, pop, worm, shoot, race };
   return api;
 }
