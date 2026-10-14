@@ -135,25 +135,26 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
       cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
     };
     resize();
-    const WORLD = 1800;
-    const SP = 14; // spacing between body segments
+    const WORLD = 6000;
+    const SP = 20; // spacing between body segments
     const mk = (x, y, colour, len) => ({
       segs: Array.from({ length: len }, (_, i) => ({ x: x - i * SP, y })), dir: 0, speed: 120, colour, grow: 0, turn: 0, alive: true,
     });
-    const me = mk(WORLD / 2, WORLD / 2, '#ff6b9d', 8);
-    me.speed = 150;
+    const me = mk(WORLD / 2, WORLD / 2, '#ff6b9d', 12);
+    me.speed = 230;
     let bots = [];
     let foods = [];
     const addFood = (x = Math.random() * WORLD, y = Math.random() * WORLD, v = 1, c = pick(FOOD)) => foods.push({ x, y, v, c });
-    for (let i = 0; i < 170; i++) addFood();
+    for (let i = 0; i < 900; i++) addFood();
     const spawnBot = () => {
-      const a = Math.random() * Math.PI * 2;
-      const b = mk(WORLD / 2 + Math.cos(a) * 600, WORLD / 2 + Math.sin(a) * 600, pick(WORM_COLOURS.slice(1)), 8 + Math.floor(Math.random() * 10));
-      b.dir = Math.random() * 6.28; b.speed = 95 + Math.random() * 25;
+      let bx; let by;
+      do { bx = 100 + Math.random() * (WORLD - 200); by = 100 + Math.random() * (WORLD - 200); } while (Math.hypot(bx - me.segs[0].x, by - me.segs[0].y) < 700);
+      const b = mk(bx, by, pick(WORM_COLOURS.slice(1)), 8 + Math.floor(Math.random() * 25));
+      b.dir = Math.random() * 6.28; b.speed = 150 + Math.random() * 40;
       bots.push(b);
     };
-    for (let i = 0; i < 5; i++) spawnBot();
-    const radius = (w) => Math.min(28, 13 + w.segs.length * 0.15);
+    for (let i = 0; i < 16; i++) spawnBot();
+    const radius = (w) => Math.min(46, 18 + w.segs.length * 0.22);
     let target = null; // finger position (screen)
     const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     cv.addEventListener('pointerdown', (e) => { target = pos(e); cv.setPointerCapture?.(e.pointerId); $('#wh')?.remove(); });
@@ -184,7 +185,7 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
       w.dir += Math.max(-rate * dt, Math.min(rate * dt, d));
     };
     const eat = (w) => {
-      const h = w.segs[0]; const r = radius(w) + 12;
+      const h = w.segs[0]; const r = radius(w) + 16;
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
         if (Math.hypot(f.x - h.x, f.y - h.y) < r) { foods.splice(i, 1); w.grow += f.v * 0.7; w.eaten = (w.eaten || 0) + f.v; if (w === me) { $('#ws').textContent = Math.floor(me.eaten); ding(); } }
@@ -194,14 +195,14 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
       w.alive = false;
       w.segs.forEach((s, i) => { if (i % 2 === 0) addFood(s.x + (Math.random() - 0.5) * 8, s.y + (Math.random() - 0.5) * 8, 2, w.colour); });
     };
-    let last = performance.now(); let over = false; let raf = 0;
+    let last = performance.now(); let over = false; let raf = 0; let age = 0;
     const tick = (now) => {
       if (!cv.isConnected || over) return;
-      const dt = Math.min(0.04, (now - last) / 1000); last = now;
+      const dt = Math.min(0.04, (now - last) / 1000); last = now; age += dt;
       // steer: towards the finger relative to screen centre
       if (target) turnTo(me, Math.atan2(target.y - cv.clientHeight / 2, target.x - cv.clientWidth / 2), dt, 5.5);
-      me.speed = boosting && me.segs.length > 7 ? 270 : 150;
-      if (me.speed > 150) { // boosting costs a little tail, dropped behind as sweets
+      me.speed = boosting && me.segs.length > 7 ? 400 : 230;
+      if (me.speed > 230) { // boosting costs a little tail, dropped behind as sweets
         boostCost += dt;
         if (boostCost > 0.3) { boostCost = 0; const t = me.segs.pop(); addFood(t.x, t.y, 1, me.colour); }
       }
@@ -219,13 +220,13 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
         turnTo(b, b.want ?? b.dir, dt, 3); move(b, dt); eat(b);
         // player's head touches the bot: the player is bumped
         const rr = radius(me) + radius(b) - 4;
-        if (b.segs.some((s, i) => i > 0 && Math.hypot(s.x - me.segs[0].x, s.y - me.segs[0].y) < rr * 0.8)) over = true;
+        if (b.segs.some((s, i) => i > 0 && Math.hypot(s.x - me.segs[0].x, s.y - me.segs[0].y) < rr * 0.8) && age > 4) over = true; // a few safe seconds at the start
         // bot's head hits the player's body: bot pops into sweets
         if (!over && me.segs.some((s, i) => i > 3 && Math.hypot(s.x - h.x, s.y - h.y) < rr * 0.7)) { die(b); me.grow += 3; cheer(); }
       }
       bots = bots.filter((b) => b.alive);
-      while (bots.length < 5) spawnBot();
-      while (foods.length < 170) addFood();
+      while (bots.length < 16) spawnBot();
+      while (foods.length < 900) addFood();
       draw();
       if (over) { oops(); stopLoop(); setTimeout(() => result('worm', 'Wormy', Math.floor(me.eaten || 0), 'sweets'), 500); return; }
       raf = requestAnimationFrame(tick);
@@ -246,8 +247,9 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
     };
     const shade = (c) => c + 'cc';
     const draw = () => {
-      const W = cv.clientWidth; const H = cv.clientHeight;
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const z = Math.max(0.5, 1 - me.segs.length * 0.003); // the camera pulls back as the worm grows
+      const W = cv.clientWidth / z; const H = cv.clientHeight / z;
+      g.setTransform(dpr * z, 0, 0, dpr * z, 0, 0);
       g.fillStyle = '#1b1f3b'; g.fillRect(0, 0, W, H);
       const h = me.segs[0];
       const x0 = h.x - W / 2; const y0 = h.y - H / 2;
@@ -258,11 +260,17 @@ export function createArcade({ app, $, topBar, wireSound, drawingThumb, starsBad
         const x = f.x - x0; const y = f.y - y0;
         if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
         g.fillStyle = f.c; g.shadowColor = f.c; g.shadowBlur = 10;
-        g.beginPath(); g.arc(x, y, f.v > 1 ? 8 : 6, 0, 7); g.fill();
+        g.beginPath(); g.arc(x, y, f.v > 1 ? 12 : 8, 0, 7); g.fill();
       }
       g.shadowBlur = 0;
       bots.forEach((b) => wormPath(b, x0, y0));
       wormPath(me, x0, y0);
+      // little map in the corner so you can see where you are in the big world
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const mw = 90; const mx = 12; const my = 12;
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(mx, my, mw, mw);
+      g.fillStyle = '#ffd23f'; for (const b of bots) g.fillRect(mx + (b.segs[0].x / WORLD) * mw - 1.5, my + (b.segs[0].y / WORLD) * mw - 1.5, 3, 3);
+      g.fillStyle = '#ff6b9d'; g.beginPath(); g.arc(mx + (h.x / WORLD) * mw, my + (h.y / WORLD) * mw, 4, 0, 7); g.fill();
     };
     window.addEventListener('resize', resize);
     raf = requestAnimationFrame(tick);

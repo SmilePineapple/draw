@@ -245,10 +245,11 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
   }
 
   // ------------------------------------------------------------------ 4. whirl word (catch the zooming word)
-  const WHIRL_COLOURS = ['#e53935', '#1e6fe0', '#18a35a', '#f08a24', '#7a3fd1', '#d6336c'];
+  const WHIRL_COLOURS = ['#e53935', '#1e6fe0', '#18a35a', '#f08a24', '#7a3fd1', '#d6336c', '#00a6a6', '#8d6e63'];
+  const WHIRL_LEVELS = 15;
   function whirl() {
     const pool = [...new Set([...PICS.map(([w]) => w), ...DEFAULT_WORDS.map(([w]) => w.toLowerCase())])].filter((w) => w.length <= 8);
-    const targets = sample(pool, 6);
+    const targets = sample(pool, WHIRL_LEVELS).sort((a, b) => a.length - b.length + (Math.random() - 0.5) * 3); // short words first, longer ones later
     let raf = 0;
     run({
       id: 'whirl', title: 'Whirl Word', total: targets.length,
@@ -256,15 +257,16 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
         cancelAnimationFrame(raf);
         const word = targets[i];
         const near = pool.filter((w) => w !== word).sort((a, b) => Math.abs(a.length - word.length) - Math.abs(b.length - word.length) + (Math.random() - 0.5) * 3);
-        const opts = shuffle([word, ...near.slice(0, 3)]);
-        const speed = 130 + i * 75; // pixels per second: every round is faster
+        const nOpts = Math.min(8, 4 + Math.floor(i / 3)); // more words whirling at higher levels
+        const opts = shuffle([word, ...near.slice(0, nOpts - 1)]);
+        const speed = Math.min(1500, 260 + i * 105); // pixels per second: every level is faster
         let missed = false;
         let over = false;
         const body = $('#gbody');
         body.innerHTML = `
           <div class="g-prompt">Catch the word!</div>
           <div class="g-word"><span>${esc(styled(word))}</span><button class="btn round" id="hear" aria-label="Hear it">🔊</button></div>
-          <div class="speedo">🚀 Speed ${i + 1}</div>
+          <div class="speedo">🚀 Level ${i + 1} of ${WHIRL_LEVELS}${i >= WHIRL_LEVELS - 3 ? ' 🔥' : ''}</div>
           <div class="whirl-field" id="wf">${opts.map((w, k) => `<button class="whirl-w" data-w="${w}" style="background:${WHIRL_COLOURS[k]}">${esc(styled(w))}</button>`).join('')}</div>`;
         speak(P.findShort(word));
         $('#hear').addEventListener('click', () => speak(word));
@@ -276,7 +278,7 @@ export function createGames({ app, $, esc, topBar, wireSound, drawingThumb, star
           const a = Math.random() * Math.PI * 2;
           return { el, x: Math.random() * Math.max(10, W - el.offsetWidth), y: Math.random() * Math.max(10, H - el.offsetHeight),
             vx: Math.cos(a) * speed * (0.8 + Math.random() * 0.4), vy: Math.sin(a) * speed * (0.8 + Math.random() * 0.4),
-            ph: Math.random() * 6, wob: 3 + i * 0.8 + k * 0.5 };
+            ph: Math.random() * 6, wob: 4 + i * 1.1 + k * 0.5 };
         });
         let last = performance.now();
         const tick = (now) => {
